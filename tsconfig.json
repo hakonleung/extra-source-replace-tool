@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+      "module": "commonjs",
+      "noImplicitAny": true,
+      "removeComments": false,
+      "preserveConstEnums": true,
+      "sourceMap": false,
+      "resolveJsonModule": true,
+      "target": "es6",
+  },
+  "include": [
+    "*.ts",
+    "src/**/*.ts"
+  ]
+}
