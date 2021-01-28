@@ -5,7 +5,7 @@ const {
   urlStyleTestReg,
   urlExtractReg,
   getParseBase64Promise
-} = require('./utils')
+} = require('../utils')
 
 module.exports = function (content, sourceMap, meta) {
   this.cacheable && this.cacheable(false)

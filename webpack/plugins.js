@@ -1,7 +1,7 @@
 const path = require('path')
 
 const webpack = require('webpack')
-const HakonPlugin = require('./hakon')
+const { HtmlPlugin } = require('./src')
 const WriteFilePlugin = require('write-file-webpack-plugin')
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
 const StatsPlugin = require('stats-webpack-plugin')
@@ -11,7 +11,7 @@ module.exports = [
   new HtmlWebpackPlugin({
     template: path.resolve(process.cwd(), 'src/index.html')
   }),
-  new HakonPlugin(),
+  new HtmlPlugin(),
   // new webpack.NamedModulesPlugin(),
   new WriteFilePlugin(),
   // new webpack.BannerPlugin({

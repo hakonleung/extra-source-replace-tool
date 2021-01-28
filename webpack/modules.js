@@ -1,8 +1,8 @@
 const path = require('path')
-const hakonLoader = path.resolve(process.cwd(), './webpack/hakon/loader')
-const hakonCssLoader = path.resolve(process.cwd(), './webpack/hakon/css-loader')
+const tsLoader = path.resolve(process.cwd(), './webpack/src/loaders/ts-loader')
+const cssLoader = path.resolve(process.cwd(), './webpack/src/loaders/css-loader')
 const exclude = [/node_modules/]
-const cssLoaders = ['style-loader', 'css-loader', hakonCssLoader, {
+const cssLoaders = ['style-loader', 'css-loader', cssLoader, {
   loader: "postcss-loader",
   options: {
     postcssOptions: {
@@ -79,7 +79,7 @@ module.exports = {
           },
         },
         // {
-        //   loader: hakonLoader
+        //   loader: tsLoader
         // }
       ],
     },

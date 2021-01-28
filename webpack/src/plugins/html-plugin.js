@@ -6,14 +6,13 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const htmlparser2 = require('htmlparser2')
 const domSerializer = require('dom-serializer')
 const domHandler = require('domhandler')
-const config = require('./config')
 
 const {
   urlStyleTestReg,
   urlExtractReg,
   getParseBase64Promise,
   getParseJsPromise
-} = require('./utils')
+} = require('../utils')
 
 const dfs = (node, handler) => {
   const stack = [node]
@@ -139,5 +138,3 @@ class HtmlLinkTransformPlugin {
 }
 
 module.exports = HtmlLinkTransformPlugin
-
-module.exports.config = config
