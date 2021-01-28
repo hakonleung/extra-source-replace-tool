@@ -3,7 +3,7 @@ const config = require('./config')
 
 const cacheMap = new Map()
 
-const urlExtractReg = /(?<href>(?<origin>(?<absolute>\/\/|(?<protocol>http(?:s)?):\/\/)?(?<host>(?<hostname>[^/:]+)(?::(?<port>\d+))?)?)(?:(?<pathname>(?:\/[^/#?]+)+)(?:(?<hash>#.+)|(?<search>\?.+))?))/i
+const urlExtractReg = /(?<href>(?<origin>(?<absolute>\/\/|(?<protocol>http(?:s)?):\/\/)?(?<host>(?<hostname>[^/:\s'"]+)(?::(?<port>\d+))?)?)(?:(?<pathname>(?:\/[^/#?\s'"]+)+)(?:(?<hash>#[^\s]+)|(?<search>\?[^\s]+))?))/i
 
 const urlStyleTestReg = /url\((?<origin>(['"]?)(?<url>[^'" ]+)\2)\)/i
 
@@ -41,13 +41,13 @@ const parseUrl = (str) => {
   return res
 }
 
-const getParseBase64Promise = (url) => new Promise((resolve, reject) => {
+const httpGet = (url, cb) => new Promise((resolve, reject) => {
   const groups = parseUrl(url)
   if (!groups || !groups.absolute || !['http', 'https'].includes(groups.protocol)) {
     resolve()
   }
   const fetch = require(groups.protocol)
-  fetch.get(groups.href, function (res) {
+  fetch.get(groups.href, function (res, req) {
     const chunks = []
     let size = 0
     res.on('data', function (chunk) {
@@ -56,15 +56,32 @@ const getParseBase64Promise = (url) => new Promise((resolve, reject) => {
     })
     res.on('end', function (err) {
       if (err) reject(err)
-      const contentType = res.headers['content-type']
-      resolve(`data:${contentType};base64,` + Buffer.concat(chunks, size).toString('base64'))
+      const data = { res, req, chunks, size }
+      const promise = { resolve, reject }
+      if (typeof cb === 'function') {
+        cb(data, promise)
+      }
+      resolve(data)
     })
   })
+})
+
+const getParseBase64Promise = (url) => httpGet(url, (data, promise) => {
+  const { res, chunks, size } = data
+  const { resolve } = promise
+  resolve(`data:${res.headers['content-type']};base64,` + Buffer.concat(chunks, size).toString('base64'))
+})
+
+const getParseJsPromise = (url) => httpGet(url, (data, promise) => {
+  const { chunks, size } = data
+  const { resolve } = promise
+  resolve(Buffer.concat(chunks, size).toString('utf8'))
 })
 
 module.exports = {
   urlStyleTestReg,
   urlExtractReg,
   // getIpAdress,
-  getParseBase64Promise
+  getParseBase64Promise,
+  getParseJsPromise
 }

@@ -11,7 +11,8 @@ const config = require('./config')
 const {
   urlStyleTestReg,
   urlExtractReg,
-  getParseBase64Promise
+  getParseBase64Promise,
+  getParseJsPromise
 } = require('./utils')
 
 const dfs = (node, handler) => {
@@ -74,24 +75,45 @@ const traversal = (root) => {
 
 const genPromise = (item) => {
   const { attr, node, text } = item
-  if (attr) {
-    switch (attr) {
-      case 'style':
-        const reg = new RegExp(urlStyleTestReg, 'g')
-        const extractResult = []
-        let temp
-        while (temp = reg.exec(node.attribs[attr])) {
-          extractResult.push(temp.groups)
-        }
-        return Promise
-          .all(extractResult.map(({ url }) => getParseBase64Promise(url)))
-          .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
-      default: {
-        return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
-      }
+  if (attr === 'style') {
+    const reg = new RegExp(urlStyleTestReg, 'g')
+    const extractResult = []
+    let temp
+    while (temp = reg.exec(node.attribs[attr])) {
+      extractResult.push(temp.groups)
+    }
+    return Promise
+      .all(extractResult.map(({ url }) => getParseBase64Promise(url)))
+      .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
+  } else if (attr) {
+    if (attr === 'src' && node.name === 'script') {
+      return getParseJsPromise(node.attribs[attr]).then(v => {
+        delete node.attribs[attr]
+        const textNode = new domHandler.Text(v)
+        node.children = [textNode]
+      })
+    } else {
+      return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
     }
   } else {
-    return Promise.resolve()
+    const reg = new RegExp(urlExtractReg, 'g')
+    const extractResult = []
+    let temp
+    while (temp = reg.exec(text)) {
+      extractResult.push(temp.groups)
+    }
+    return Promise
+      .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
+      .then(res => {
+        let newText = text
+        res.forEach((v, i) => {
+          if (v) {
+            newText = newText.replace(extractResult[i].href, v)
+          }
+        })
+        const textNode = new domHandler.Text(newText)
+        node.children = [textNode]
+      })
   }
 }
 
