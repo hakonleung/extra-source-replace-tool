@@ -24,9 +24,9 @@ module.exports = function (content, sourceMap, meta) {
   })
 
   Promise
-    .all(matchList.reduce((all, { url }) => ([...all, getParseBase64Promise(url)]), []))
+    .all(matchList.map(({ url }) => getParseBase64Promise(url)))
     .then((values) => {
-      values.forEach((v, i) => matchList[i].decl.value = matchList[i].decl.value.replace(matchList[i].origin, v))
+      values.forEach((v, i) => v && (matchList[i].decl.value = matchList[i].decl.value.replace(matchList[i].origin, v)))
 
       const options = loaderUtils.getOptions(this)
       const processOptions = { prev: sourceMap }

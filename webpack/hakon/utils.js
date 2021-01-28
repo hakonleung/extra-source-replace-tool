@@ -1,44 +1,53 @@
 
+const config = require('./config')
 
 const cacheMap = new Map()
 
-const urlExtractReg = /(?<origin>(?:\/\/|(?<protocol>http(?:s)?):\/\/)?(?<host>(?<hostname>[^/:]+)(?::(?<port>\d+))?)?)(?:(?<pathname>(?:\/[^/#?]+)+)(?:(?<hash>#.+)|(?<search>\?.+))?)/i
+const urlExtractReg = /(?<href>(?<origin>(?<absolute>\/\/|(?<protocol>http(?:s)?):\/\/)?(?<host>(?<hostname>[^/:]+)(?::(?<port>\d+))?)?)(?:(?<pathname>(?:\/[^/#?]+)+)(?:(?<hash>#.+)|(?<search>\?.+))?))/i
 
 const urlStyleTestReg = /url\((?<origin>(['"]?)(?<url>[^'" ]+)\2)\)/i
 
-const getIpAdress = () => {
-  let ipAdress = cacheMap.get('ipAdress')
-  if (ipAdress) {
-    return ipAdress
-  }
-  const interfaces = require('os').networkInterfaces()
-  for (const devName in interfaces) {
-    for (let i = 0; i < interfaces[devName].length; i++) {
-      const alias = interfaces[devName][i]
-      if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
-        cacheMap.set('ipAdress', alias.address)
-        return alias.address
+// const getIpAdress = () => {
+//   let ipAdress = cacheMap.get('ipAdress')
+//   if (ipAdress) {
+//     return ipAdress
+//   }
+//   const interfaces = require('os').networkInterfaces()
+//   for (const devName in interfaces) {
+//     for (let i = 0; i < interfaces[devName].length; i++) {
+//       const alias = interfaces[devName][i]
+//       if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
+//         cacheMap.set('ipAdress', alias.address)
+//         return alias.address
+//       }
+//     }
+//   }
+// }
+
+const parseUrl = (str) => {
+  let res = urlExtractReg.exec(str)
+  if (!res) return null
+  res = res.groups
+  Object.keys(res).forEach(key => {
+    if (res[key] === undefined) {
+      if (key === 'protocol') {
+        res[key] = config.protocol
+        if (res.absolute) {
+          res.href = config.protocol + ':' + res.href
+        }
       }
     }
-  }
+  })
+  return res
 }
 
 const getParseBase64Promise = (url) => new Promise((resolve, reject) => {
-  let groups
-  try {
-    groups = urlExtractReg.exec(url).groups
-  } catch (err) {
-    reject(err)
+  const groups = parseUrl(url)
+  if (!groups || !groups.absolute || !['http', 'https'].includes(groups.protocol)) {
+    resolve()
   }
-  let fetch
-  if (groups.protocol === 'http') {
-    fetch = require('http')
-  } else if (groups.protocol === 'https') {
-    fetch = require('https')
-  } else {
-    reject('can not reconize protocol')
-  }
-  fetch.get(url, function (res) {
+  const fetch = require(groups.protocol)
+  fetch.get(groups.href, function (res) {
     const chunks = []
     let size = 0
     res.on('data', function (chunk) {
@@ -56,6 +65,6 @@ const getParseBase64Promise = (url) => new Promise((resolve, reject) => {
 module.exports = {
   urlStyleTestReg,
   urlExtractReg,
-  getIpAdress,
+  // getIpAdress,
   getParseBase64Promise
 }

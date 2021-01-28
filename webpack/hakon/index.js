@@ -6,6 +6,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const htmlparser2 = require('htmlparser2')
 const domSerializer = require('dom-serializer')
 const domHandler = require('domhandler')
+const config = require('./config')
 
 const {
   urlStyleTestReg,
@@ -36,13 +37,6 @@ const traversal = (root) => {
         }
         return
       case 'style':
-        if (urlStyleTestReg.test(node.attribs.src)) {
-          shouldTransformNodes.push({
-            node,
-            attr: 'src'
-          })
-        }
-        return
       case 'script':
         text = node.children.reduce((r, v) => r + v.data, '')
         if (urlExtractReg.test(text)) {
@@ -51,6 +45,7 @@ const traversal = (root) => {
             node,
             text,
           })
+          return
         }
       // case 'iframe':
       case 'source':
@@ -65,7 +60,7 @@ const traversal = (root) => {
     }
 
     if (node.attribs && node.attribs.style) {
-      if (urlExtractReg.test(node.attribs.style)) {
+      if (urlStyleTestReg.test(node.attribs.style)) {
         shouldTransformNodes.push({
           node,
           attr: 'style'
@@ -77,28 +72,44 @@ const traversal = (root) => {
   return shouldTransformNodes
 }
 
-const genPromisesFromNodes = (nodes) => nodes.reduce((promises, node) => [...promises, new Promise((resolve, reject) => {
-  if (node.attr) {
-
+const genPromise = (item) => {
+  const { attr, node, text } = item
+  if (attr) {
+    switch (attr) {
+      case 'style':
+        const reg = new RegExp(urlStyleTestReg, 'g')
+        const extractResult = []
+        let temp
+        while (temp = reg.exec(node.attribs[attr])) {
+          extractResult.push(temp.groups)
+        }
+        return Promise
+          .all(extractResult.map(({ url }) => getParseBase64Promise(url)))
+          .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
+      default: {
+        return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
+      }
+    }
   } else {
-
+    return Promise.resolve()
   }
-})], [])
+}
 
 class HtmlLinkTransformPlugin {
   apply(compiler) {
     compiler.hooks.compilation.tap('HtmlLinkTransformPlugin', (compilation) => {
-      console.log('The compiler is starting a new compilation...')
-
-      // Static Plugin interface |compilation |HOOK NAME | register listener 
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
         'HtmlLinkTransformPlugin',
         (data, cb) => {
           const root = htmlparser2.parseDocument(data.html)
-          const shouldTransformNodes = traversal(root)
-          debugger
-          let str = domSerializer.default(root)
-          // cb(null, data)
+          const items = traversal(root).map(item => genPromise(item))
+          Promise.all(items).then(res => {
+            data.html = domSerializer.default(root)
+            cb(null, data)
+          }).catch(err => {
+            console.log(err)
+            process.exit(1)
+          })
         }
       )
     })
@@ -106,3 +117,5 @@ class HtmlLinkTransformPlugin {
 }
 
 module.exports = HtmlLinkTransformPlugin
+
+module.exports.config = config
