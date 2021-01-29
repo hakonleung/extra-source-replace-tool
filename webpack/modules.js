@@ -21,7 +21,7 @@ const cssLoaders = ['style-loader', 'css-loader', cssLoader, {
 module.exports = {
   rules: [
     {
-      test: /\.ts(x?)$/,
+      test: /\.tsx?$/,
       exclude,
       use: [
         {

@@ -22,30 +22,35 @@ export function devServer(compiler: Compiler) {
             colors: true,
         },
     };
+    let middleware
+    
+    try {
+        middleware = WebpackDevMiddleware(compiler, middlewareOptions);
+    } catch (err) {
+        debugger
+    }
+    // app.use(middleware);
 
-    const middleware = WebpackDevMiddleware(compiler, middlewareOptions);
-    app.use(middleware);
+    // app.get('/', (req: Request, res: Response) => {
+    //     const handleRequest = () => {
+    //         const fileName = path.resolve(process.cwd(), './dev/index.html');
+    //         try {
+    //             const htmlFileBuffer: Buffer = (middleware as any).fileSystem.readFileSync(fileName);
+    //             if (htmlFileBuffer) {
+    //                 let htmlString = htmlFileBuffer.toString();
+    //                 res.set('Content-Type', 'text/html');
+    //                 res.send(htmlString);
+    //             }
+    //         } catch (error) {
+    //             middleware.waitUntilValid(() => {
+    //                 handleRequest();
+    //             });
+    //         }
+    //     };
+    //     handleRequest();
+    // });
 
-    app.get('/', (req: Request, res: Response) => {
-        const handleRequest = () => {
-            const fileName = path.resolve(process.cwd(), 'index.html');
-            try {
-                const htmlFileBuffer: Buffer = (middleware as any).fileSystem.readFileSync(fileName);
-                if (htmlFileBuffer) {
-                    let htmlString = htmlFileBuffer.toString();
-                    res.set('Content-Type', 'text/html');
-                    res.send(htmlString);
-                }
-            } catch (error) {
-                middleware.waitUntilValid(() => {
-                    handleRequest();
-                });
-            }
-        };
-        handleRequest();
-    });
-
-    app.listen(9000, () => {
-        console.log(`http://127.0.0.1:${9000}`);
-    });
+    // app.listen(9000, () => {
+    //     console.log(`http://127.0.0.1:${9000}`);
+    // });
 }

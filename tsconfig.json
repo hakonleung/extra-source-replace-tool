@@ -7,6 +7,7 @@
       "sourceMap": false,
       "resolveJsonModule": true,
       "target": "es6",
+      "jsx": "react"
   },
   "include": [
     "*.ts",

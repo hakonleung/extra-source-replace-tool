@@ -1,3 +1,5 @@
 module.exports = {
-  protocol: 'https'
+  protocol: 'https',
+  ignorePath: '',
+  context: process.cwd()
 }
