@@ -1,5 +1,5 @@
 const TsTransform = require('../utils/ts-ast')
-const config = require('../config')
+const config = require('../core/config')
 
 module.exports = function (source, map) {
   const req = this.currentRequest.split('!')

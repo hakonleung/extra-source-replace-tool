@@ -1,28 +1,11 @@
 
-const config = require('../config')
+const config = require('../core/config')
 
 const cacheMap = new Map()
 
 const urlExtractReg = /(?<href>(?<origin>(?<absolute>\/\/|(?<protocol>http(?:s)?):\/\/)?(?<host>(?<hostname>[^/:\s'"]+)(?::(?<port>\d+))?)?)(?:(?<pathname>(?:\/[^/#?\s'"]+)+)(?:(?<hash>#[^\s]+)|(?<search>\?[^\s]+))?))/i
 
 const urlStyleTestReg = /url\((?<origin>(['"]?)(?<url>[^'" ]+)\2)\)/i
-
-// const getIpAdress = () => {
-//   let ipAdress = cacheMap.get('ipAdress')
-//   if (ipAdress) {
-//     return ipAdress
-//   }
-//   const interfaces = require('os').networkInterfaces()
-//   for (const devName in interfaces) {
-//     for (let i = 0; i < interfaces[devName].length; i++) {
-//       const alias = interfaces[devName][i]
-//       if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
-//         cacheMap.set('ipAdress', alias.address)
-//         return alias.address
-//       }
-//     }
-//   }
-// }
 
 const parseUrl = (str) => {
   let res = urlExtractReg.exec(str)
@@ -81,7 +64,6 @@ const getParseJsPromise = (url) => httpGet(url, (data, promise) => {
 module.exports = {
   urlStyleTestReg,
   urlExtractReg,
-  // getIpAdress,
   getParseBase64Promise,
   getParseJsPromise
 }
