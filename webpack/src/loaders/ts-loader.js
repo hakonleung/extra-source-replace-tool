@@ -1,4 +1,5 @@
-const TsTransform = require('../utils/ts-ast')
+const path = require('path')
+const TsTransform = require('../core/ts-ast')
 const config = require('../core/config')
 
 module.exports = function (source, map) {

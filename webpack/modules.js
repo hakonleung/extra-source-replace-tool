@@ -78,9 +78,9 @@ module.exports = {
             configFile: '../tsconfig.json',
           },
         },
-        // {
-        //   loader: tsLoader
-        // }
+        {
+          loader: tsLoader
+        }
       ],
     },
     // {
