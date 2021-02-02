@@ -1,11 +1,11 @@
 const postcss = require('postcss')
 const loaderUtils = require('loader-utils')
-
 const {
-  urlStyleTestReg,
-  urlExtractReg,
   getParseBase64Promise
-} = require('../utils')
+} = require('../utils/http')
+const {
+  parseStyleUrl
+} = require('../utils/url-parser')
 
 module.exports = function (content, sourceMap, meta) {
   this.cacheable && this.cacheable(false)
@@ -14,12 +14,12 @@ module.exports = function (content, sourceMap, meta) {
   const root = meta && meta.ast && meta.ast.type === "postcss" ? meta.ast.root : postcss.parse(content)
   const matchList = []
   root.walkDecls(decl => {
-    const res = urlStyleTestReg.exec(decl.value)
-    if (!res || !urlExtractReg.exec(res.groups.url)) return
+    const res = parseStyleUrl(decl.value, true)
+    if (!res) return
     matchList.push({
       decl,
-      url: res.groups.url,
-      origin: res.groups.origin
+      url: res.url,
+      origin: res.origin
     })
   })
 

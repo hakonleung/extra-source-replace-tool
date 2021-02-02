@@ -1,5 +1,5 @@
 const path = require('path')
-const TsTransform = require('../core/ts-ast')
+const TsTransformer = require('../core/ts-transformer')
 const config = require('../core/config')
 
 module.exports = function (source, map) {
@@ -14,7 +14,7 @@ module.exports = function (source, map) {
   try {
     let transformedCode, changeset
     // .js .jsx .ts .tsx
-    const transformer = new TsTransform(path.relative(config.context, file), source, config)
+    const transformer = new TsTransformer(path.relative(config.context, file), source, config)
   
     transformedCode = transformer.transformedCode
     changeset = transformer.changeset
