@@ -1,9 +1,21 @@
-const config = require('./config')
-
-class Core {
-  constructor(config) {
-    this.config
-  }
+const DEFAULT_OPTIONS = {
+  protocol: 'https',
+  ignorePath: '',
+  context: process.cwd(),
 }
+const core = {}
 
-module.exports = Core
+let _options = DEFAULT_OPTIONS
+Object.defineProperty(core, 'options', {
+  get() {
+    return _options
+  },
+  set(opts) {
+    _options = {
+      ...DEFAULT_OPTIONS,
+      ...opts
+    }
+  }
+})
+
+module.exports = core

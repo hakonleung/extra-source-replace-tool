@@ -45,9 +45,9 @@ const config = {
 
 const compiler = webpack(config)
 
-if (process.env.NODE_ENV === 'development') {
-  devServer(compiler)
-} else {
+// if (process.env.NODE_ENV === 'development') {
+//   devServer(compiler)
+// } else {
   compiler.run((err, stats) => {
     console.log(err)
     console.log(
@@ -62,4 +62,4 @@ if (process.env.NODE_ENV === 'development') {
       })
     )
   })
-}
+// }

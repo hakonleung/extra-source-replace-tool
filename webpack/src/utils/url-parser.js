@@ -1,4 +1,4 @@
-const config = require('../core/config')
+const core = require('../core/index.js')
 
 const URL_REGS = {
   protocol: /(?<protocol>(https?:)?\/\/)/,
@@ -21,20 +21,21 @@ const testUrl = (str, start) => {
 }
 
 const execUrlNormalize = (groups) => {
+  const defaultProtocol = core.options.protocol
   Object.keys(groups).forEach(key => {
     if (key === 'protocol') {
       if (groups[key] !== undefined) {
-        const [protocol, slash] = res[key].split(':')
+        const [protocol, slash] = groups[key].split(':')
         if (!slash) {
-          groups[key] = config.protocol
-          groups.origin = config.protocol + groups.origin
-          groups.href = config.protocol + groups.href
+          groups[key] = defaultProtocol
+          groups.origin = defaultProtocol + groups.origin
+          groups.href = defaultProtocol + groups.href
         } else {
           groups[key] = protocol
         }
       } else {
-        const protocolWidthSlash = config.protocol + '://'
-        groups[key] = config.protocol
+        const protocolWidthSlash = defaultProtocol + '://'
+        groups[key] = defaultProtocol
         if (groups.host) {
           // host exist
           groups.origin = protocolWidthSlash + groups.origin
@@ -48,7 +49,7 @@ const execUrlNormalize = (groups) => {
         groups.port = port
       }
     }
-    if (res[key] === undefined) {
+    if (groups[key] === undefined) {
       groups[key] = ''
     }
   })

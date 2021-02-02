@@ -1,13 +1,18 @@
 {
   "compilerOptions": {
-      "module": "commonjs",
-      "noImplicitAny": true,
-      "removeComments": false,
-      "preserveConstEnums": true,
-      "sourceMap": false,
-      "resolveJsonModule": true,
-      "target": "es6",
-      "jsx": "react"
+    "lib": [
+      "es5",
+      "es6",
+      "dom"
+    ],
+    "module": "commonjs",
+    "noImplicitAny": true,
+    "removeComments": false,
+    "preserveConstEnums": true,
+    "sourceMap": false,
+    "resolveJsonModule": true,
+    "target": "es6",
+    "jsx": "react"
   },
   "include": [
     "*.ts",

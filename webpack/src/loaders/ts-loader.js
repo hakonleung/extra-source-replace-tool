@@ -1,29 +1,23 @@
 const path = require('path')
 const TsTransformer = require('../core/ts-transformer')
-const config = require('../core/config')
+const core = require('../core')
 
 module.exports = function (source, map) {
+  const { options } = core
   const req = this.currentRequest.split('!')
   const file = req[req.length - 1]
-  if (config.ignorePath && config.ignorePath.test(file)) return source
+  if (options.ignorePath && options.ignorePath.test(file)) return source
 
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
   const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
   if (leadingComment && /@local-ignore/.test(leadingComment[0])) return source
 
-  try {
-    let transformedCode, changeset
-    // .js .jsx .ts .tsx
-    const transformer = new TsTransformer(path.relative(config.context, file), source, config)
-  
-    transformedCode = transformer.transformedCode
-    changeset = transformer.changeset
-    
-
-    if (changeset.length === 0) transformedCode = source
-
-    return transformedCode
-  } catch(e) {
-    this.callback(e, null);
-  }
+  new TsTransformer(path.relative(options.context, file), source, options)
+    .getTransformCode()
+    .then(transformedCode => {
+      this.callback(null, source)
+    })
+    .catch(e => {
+      this.callback(e, null)
+    })
 }

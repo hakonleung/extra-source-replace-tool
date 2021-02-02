@@ -73,6 +73,26 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
+const getAccess = (node) => {
+  const access = []
+  while (node) {
+    if (ts.isIdentifier(node)) {
+      access.unshift(node)
+    } else if (node.name && ts.isIdentifier(node.name)) {
+      access.unshift(node.name)
+    } else if (node.argumentExpression) {
+      if (ts.isStringLiteral(node.argumentExpression)) {
+        access.unshift(node.argumentExpression)
+      } else {
+        return []
+      }
+    }
+    node = node.expression
+  }
+  return access
+}
+
 module.exports = {
-  stringPlusToTemplateExpression
+  stringPlusToTemplateExpression,
+  getAccess
 }
