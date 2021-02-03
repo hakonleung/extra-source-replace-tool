@@ -3,7 +3,16 @@ const DEFAULT_OPTIONS = {
   ignorePath: '',
   context: process.cwd(),
   global: 'window',
-  globalAlias: ['windowAsAny', 'global']
+  globalAlias: ['windowAsAny', 'global'],
+  origins: ['https://doc.weixin.qq.com'],
+  validBinaryAccesses: [
+    ['window', 'location'],
+    ['window', 'location', 'href'],
+  ],
+  validCallAccesses: [
+    ['window', 'open'],
+    ['window', 'location', 'replace'],
+  ]
 }
 const core = {}
 

@@ -1,6 +1,6 @@
 const ts = require('typescript')
 const templateTransform = require('./template-transform')
-const { testUrl } = require('../utils/url-parser')
+const { getUrlFullInfo } = require('../utils/url-parser')
 const {
   stringPlusToTemplateExpression,
   getAccess
@@ -92,45 +92,48 @@ class TsProcessor {
   constructor(sourceFile, options) {
     this.sourceFile = sourceFile
     this.options = options
-    this.changeset = new Changeset()
   }
 
-  getChangeset(root = this.sourceFile) {
+  getChangeset(root = this.sourceFile, onlyChild) {
+    const changeset = new Changeset()
     const nodeVisitor = (node) => {
-      let result
-      [
-        this.stringPlusProc,
-        this.stringProc,
-        this.templateProc,
-        this.expressionProc,
-        this.callExpressionProc,
-      ].some(proc => {
-        result = proc.call(this, node)
-        return !!result
-      })
+      const result = this.process(node)
 
       if (result) {
-        if (result.start === undefined) {
-          result.start = result.node.pos
-          result.end = result.node.end
-        }
-        result.code = ts.createPrinter().printNode(ts.EmitHint.Unspecified, result.node, this.sourceFile)
-
-        this.changeset.add(result)
+        changeset.add(result)
         return
       }
 
       ts.forEachChild(node, nodeVisitor)
     }
     
-    ts.visitNode(root, nodeVisitor)
-    return this.changeset
+    ts[onlyChild ? 'forEachChild' : 'visitNode'](root, nodeVisitor)
+    return changeset
+  }
+
+  process(node) {
+    let result = null
+    ;[
+      this.expressionProc,
+      this.stringPlusProc,
+      this.stringProc,
+    ].some(proc => result = proc.call(this, node))
+
+    if (result) {
+      if (result.start === undefined) {
+        result.start = result.node.pos
+        result.end = result.node.end
+      }
+      result.code = ts.createPrinter().printNode(ts.EmitHint.Unspecified, result.node, this.sourceFile)
+    }
+
+    return result
   }
 
   stringPlusProc(node) {
     const templateAst = stringPlusToTemplateExpression(node)
     if (templateAst) {
-      const result = (ts.isTemplateExpression(templateAst) ? this.templateProc : this.stringProc)(templateAst)
+      const result = this.stringProc(templateAst)
       if (!result) return
       result.start = node.pos
       result.end = node.end
@@ -139,33 +142,43 @@ class TsProcessor {
   }
 
   stringProc(node) {
-    // 纯字符串
-    if ((ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) && testUrl(node.text)) {
-      return { text: node.text, node }
+    let text = ''
+    let incomplete = false
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      text = node.text
+    } else if (ts.isTemplateExpression(node)) {
+      text = node.head.text
+      incomplete = true
     }
-  }
-
-  templateProc(node) {
-    if (ts.isTemplateExpression(node)) {
-      const rawTplText = ts.createPrinter().printNode(ts.EmitHint.Unspecified, node, this.sourceFile)
-      if (testUrl(rawTplText)) {
-        return { text: rawTplText, node }
-      }
-    }
+    let fullInfo
+    return text && (fullInfo = getUrlFullInfo(text, incomplete)) && {
+      ...fullInfo,
+      node
+    } || null
   }
 
   expressionProc(node) {
-    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-      const access = getAccess(node.left)
-      return { node, access }
+    const isBinaryExpression = ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
+    const isCallExpression = ts.isCallExpression(node)
+    let accessEntry
+    let argsEntry
+    
+    if (isBinaryExpression || isCallExpression) {
+      if (isBinaryExpression) {
+        accessEntry = 'left'
+        argsEntry = 'right'
+      } else {
+        accessEntry = 'expression'
+        argsEntry = 'arguments'
+      }
+      const access = getAccess(node[accessEntry], true, isCallExpression)
+      if (!access.length) return null
+      const child = (node[argsEntry] instanceof Array ? node[argsEntry] : [node[argsEntry]]).map(v => this.getChangeset(v))
+      if (child.length) {
+        return { node, access, child }
+      }
     }
-  }
-
-  callExpressionProc(node) {
-    if (ts.isCallExpression(node)) {
-      const access = getAccess(node.expression)
-      return { node, access }
-    }
+    return null
   }
 }
 

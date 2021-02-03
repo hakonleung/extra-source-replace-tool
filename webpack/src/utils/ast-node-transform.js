@@ -1,10 +1,10 @@
 const ts = require('typescript')
+const core = require('../core')
 
 function stringPlusToTemplateExpression(exp) {
   const isStringPlusExp = node => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
 
   if (!isStringPlusExp(exp)) return
-
   let canTransform = true
   // 检查是否满足条件，并将节点变成数组
   const nodes = []
@@ -29,7 +29,7 @@ function stringPlusToTemplateExpression(exp) {
   if (!canTransform || nodes.length < 2) return
 
 
-  // 预处理：保证变量一定是字符串间隔的，并将字符串中的$换成\\$
+  // 预处理：保证变量一定是字符串间隔的
   const combined = nodes.reduce((pre, cur) => {
     if (ts.isStringLiteral(cur)) {
       if (typeof pre[pre.length - 1] === 'string') {
@@ -73,7 +73,25 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const getAccess = (node) => {
+const isAccessValid = (access, isCallExpression) => {
+  const { global, globalAlias, validBinaryAccesses, validCallAccesses } = core.options
+  const validAccesses = isCallExpression ? validCallAccesses : validBinaryAccesses
+  return access && access.length > 0 && validAccesses.some(validAccess => {
+    let validStart = 0
+    let accessStart = 0
+    if (validAccess[0] === global) {
+      validStart = 1
+      if (access[0].text === global || globalAlias.includes(access[0].text)) {
+        accessStart = 1
+      }
+    }
+    const compareValidAccess = validAccess.slice(validStart)
+    const compareAccess = access.slice(accessStart)
+    return compareValidAccess.length === compareAccess.length && compareAccess.every((v, i) => v.text === compareValidAccess[i])
+  })
+}
+
+const getAccess = (node, verify, isCallExpression) => {
   const access = []
   while (node) {
     if (ts.isIdentifier(node)) {
@@ -89,10 +107,11 @@ const getAccess = (node) => {
     }
     node = node.expression
   }
-  return access
+  return !verify || isAccessValid(access, isCallExpression) ? access : []
 }
 
 module.exports = {
   stringPlusToTemplateExpression,
+  isAccessValid,
   getAccess
 }

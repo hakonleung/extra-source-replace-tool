@@ -53,7 +53,7 @@ const execUrlNormalize = (groups) => {
       groups[key] = ''
     }
   })
-  return groups
+  return groups.origin || groups.tail ? groups : null
 }
 
 const parseUrl = (str) => {
@@ -64,6 +64,21 @@ const parseUrl = (str) => {
     ...res.groups
   }
   return execUrlNormalize(res)
+}
+
+const getUrlFullInfo = (str, incomplete) => {
+  const location = parseUrl(str)
+  if (!location) return null
+  const res = { text: str, location, ext: '' }
+  if (!location.host || core.options.origins.includes(location.origin)) {
+    res.isRelative = true
+  }
+  // empty ext regarded as source, though cgi
+  if (!incomplete) {
+    const ext = /\.([0-0a-z]+)$/i.exec(location.search)
+    if (ext) res.ext = ext[1]
+  }
+  return res
 }
 
 const URL_STYLE_REG = /url\((?<origin>(['"]?)(?<url>[^'" ]+)\2)\)/i
@@ -93,6 +108,7 @@ const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !
 module.exports = {
   testUrl,
   parseUrl,
+  getUrlFullInfo,
   parseStyleUrl,
   execUrl,
   execStyleUrl
