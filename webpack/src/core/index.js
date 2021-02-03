@@ -2,6 +2,8 @@ const DEFAULT_OPTIONS = {
   protocol: 'https',
   ignorePath: '',
   context: process.cwd(),
+  global: 'window',
+  globalAlias: ['windowAsAny', 'global']
 }
 const core = {}
 

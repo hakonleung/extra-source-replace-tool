@@ -12,12 +12,13 @@ module.exports = function (source, map) {
   const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
   if (leadingComment && /@local-ignore/.test(leadingComment[0])) return source
 
+  const callback = this.async()
   new TsTransformer(path.relative(options.context, file), source, options)
     .getTransformCode()
     .then(transformedCode => {
-      this.callback(null, source)
+      callback(null, source)
     })
     .catch(e => {
-      this.callback(e, null)
+      callback(e, null)
     })
 }
