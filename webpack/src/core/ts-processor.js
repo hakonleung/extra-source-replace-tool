@@ -95,7 +95,7 @@ class TsProcessor {
     this.changeset = new Changeset()
   }
 
-  getChangeset() {
+  getChangeset(root = this.sourceFile) {
     const nodeVisitor = (node) => {
       let result
       [
@@ -123,7 +123,7 @@ class TsProcessor {
       ts.forEachChild(node, nodeVisitor)
     }
     
-    ts.visitNode(this.sourceFile, nodeVisitor)
+    ts.visitNode(root, nodeVisitor)
     return this.changeset
   }
 
