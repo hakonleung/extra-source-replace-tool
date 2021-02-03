@@ -1,6 +1,6 @@
 const http = require('http')
 const https = require('https')
-const { parseUrl } = require('./url-parser')
+const { getUrlFullInfo } = require('./url-parser')
 
 const FETCH_PROTOCOL = {
   http,
@@ -8,12 +8,12 @@ const FETCH_PROTOCOL = {
 }
 
 const httpGet = (url, cb) => new Promise((resolve, reject) => {
-  const groups = parseUrl(url)
-  if (!groups || !groups.absolute || !FETCH_PROTOCOL[groups.protocol]) {
+  const fullInfo = getUrlFullInfo(url)
+  if (!fullInfo || fullInfo.isRelative || !FETCH_PROTOCOL[fullInfo.protocol]) {
     resolve()
   }
   
-  FETCH_PROTOCOL[groups.protocol].get(groups.href, function (res, req) {
+  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, function (res, req) {
     const chunks = []
     let size = 0
     res.on('data', function (chunk) {

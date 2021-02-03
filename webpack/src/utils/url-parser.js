@@ -70,7 +70,7 @@ const getUrlFullInfo = (str, incomplete) => {
   const location = parseUrl(str)
   if (!location) return null
   const res = { text: str, location, ext: '' }
-  if (!location.host || core.options.origins.includes(location.origin)) {
+  if (!location.host && location.pathname || core.options.origins.includes(location.origin)) {
     res.isRelative = true
   }
   // empty ext regarded as source, though cgi
