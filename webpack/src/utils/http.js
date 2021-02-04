@@ -2,6 +2,8 @@ const http = require('http')
 const https = require('https')
 const { getUrlFullInfo } = require('./url-parser')
 
+const sourceCache = new Map()
+
 const FETCH_PROTOCOL = {
   http,
   https
@@ -12,6 +14,16 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
     resolve()
   }
+  let data
+  const onEnd = () => {
+    if (typeof cb === 'function') {
+      cb(data, { resolve, reject })
+    }
+    resolve(data)
+  }
+  if (data = sourceCache.get(fullInfo.href)) {
+    onEnd()
+  }
   FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, function (res, req) {
     const chunks = []
     let size = 0
@@ -21,12 +33,9 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
     })
     res.on('end', function (err) {
       if (err) reject(err)
-      const data = { res, req, chunks, size }
-      const promise = { resolve, reject }
-      if (typeof cb === 'function') {
-        cb(data, promise)
-      }
-      resolve(data)
+      data = { res, req, chunks, size }
+      sourceCache.set(fullInfo.href, data)
+      onEnd()
     })
   })
 })

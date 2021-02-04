@@ -2,10 +2,10 @@ const core = require('../core/index.js')
 
 const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#`
 const VALID_CHARS = {
-  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#']/g, '').split('').join('\\'),
+  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[;:@&=+$,/?#']/g, '').split('').join('\\'),
   host: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#']/g, '').split('').join('\\'),
-  hash: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.?#']/g, '').split('').join('\\'),
-  search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.?#']/g, '').split('').join('\\'),
+  hash: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
+  search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
 }
 const URL_REGS = {
   protocol: /(?<protocol>(https?:)?\/\/)/,
@@ -20,6 +20,7 @@ const URL_REG = new RegExp(`(${URL_ORIGIN_REG.source})?${URL_TAIL_REG.source}`, 
 const URL_REG_START = new RegExp(`^${URL_REG.source}`, URL_REG.flags)
 
 const testUrl = (str, start) => {
+  if (str === undefined) return false
   const res = (start ? URL_REG_START : URL_REG).exec(str)
   if (!res) return false
   const { origin, tail } = res.groups
@@ -67,6 +68,7 @@ const execUrlNormalize = (groups) => {
 }
 
 const parseUrl = (str) => {
+  if (str === undefined) return null
   let res = URL_REG.exec(str)
   if (!res) return null
   res = {

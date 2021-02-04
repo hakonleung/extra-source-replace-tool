@@ -1,11 +1,10 @@
 const ts = require('typescript')
 const TsProcessor = require('./ts-processor')
-const { options } = require('./')
 const { transformCgi } = require('../utils/url-parser')
 
 class TsTransformer {
   constructor(filename, code, opts) {
-    this.filename = filename
+    this.filename = filename || `temp-${Date.now()}`
     this.code = code
     this.sourceFile = ts.createSourceFile(
       filename,

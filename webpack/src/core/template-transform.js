@@ -11,6 +11,8 @@ const {
   execUrl,
   execStyleUrl
 } = require('../utils/url-parser')
+const core = require('./')
+const { TsTransformer } = require('./ts-transformer')
 
 const dfs = (node, handler) => {
   const stack = [node]
@@ -71,21 +73,34 @@ const traversal = (root) => {
 const genPromise = (item) => {
   const { attr, node, text } = item
   if (attr === 'style') {
+    // style attr
     const extractResult = execStyleUrl(node.attribs[attr], true)
     return Promise
       .all(extractResult.map(({ url }) => getParseBase64Promise(url)))
       .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
   } else if (attr) {
     if (attr === 'src' && node.name === 'script') {
+      // js src
       return getParseJsPromise(node.attribs[attr]).then(v => {
         delete node.attribs[attr]
         const textNode = new domHandler.Text(v)
         node.children = [textNode]
       })
     } else {
+      // other link
       return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
     }
   } else {
+    if (node.name === 'script') {
+      // js content
+      return new TsTransformer(undefined, text, core.options)
+        .transformCode()
+        .then(transformedCode => {
+          const textNode = new domHandler.Text(transformedCode)
+          node.children = [textNode]
+        })
+    }
+    // css
     const extractResult = execUrl(text)
     return Promise
       .all(extractResult.map(({ href }) => getParseBase64Promise(href)))

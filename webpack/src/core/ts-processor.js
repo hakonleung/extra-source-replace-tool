@@ -1,5 +1,4 @@
 const ts = require('typescript')
-const templateTransform = require('./template-transform')
 const { getUrlFullInfo } = require('../utils/url-parser')
 const {
   stringPlusToTemplateExpression,
