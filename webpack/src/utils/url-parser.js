@@ -8,24 +8,29 @@ const VALID_CHARS = {
   search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
 }
 const URL_REGS = {
-  protocol: /(?<protocol>(https?:)?\/\/)/,
-  pathname: new RegExp(`(?<pathname>(^[${VALID_CHARS.pathname}]+)?(\\/[${VALID_CHARS.pathname}]+)*\\/?)`),
-  host: new RegExp(`(?<host>([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(:\d+)?)`),
-  hash: new RegExp(`/(?<hash>#[${VALID_CHARS.hash}]+)`),
-  search: new RegExp(`(?<search>\\?[${VALID_CHARS.search}]+)`)
+  protocol: `(https?:)?\/\/`,
+  pathname: `(^[${VALID_CHARS.pathname}]+)?((\\/[${VALID_CHARS.pathname}]+)+\\/?|\/)`,
+  host: `([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(:\d+)?`,
+  hash: `#[${VALID_CHARS.hash}]+`,
+  search: `\\?[${VALID_CHARS.search}]+`
 }
-const URL_ORIGIN_REG = new RegExp(`(?<origin>${URL_REGS.protocol.source}${URL_REGS.host.source})`)
-const URL_TAIL_REG = new RegExp(`(?<tail>${URL_REGS.pathname.source}?(${URL_REGS.hash.source}|${URL_REGS.search.source})?)`)
-const URL_REG = new RegExp(`(${URL_ORIGIN_REG.source})?${URL_TAIL_REG.source}`, 'i')
-const URL_REG_START = new RegExp(`^${URL_REG.source}`, URL_REG.flags)
+const _w = (name, group) => `(${group ? `?<${name}>` : ''}${URL_REGS[name]})`
+Object.keys(URL_REGS).forEach(v => {
+  URL_REGS[v + '_g'] = _w(v, true)
+  URL_REGS[v] = _w(v)
+})
 
-const testUrl = (str, start) => {
-  if (str === undefined) return false
-  const res = (start ? URL_REG_START : URL_REG).exec(str)
-  if (!res) return false
-  const { origin, tail } = res.groups
-  return !!(origin || tail)
-}
+const URL_ORIGIN_REG = `(?<origin>${URL_REGS.protocol_g}${URL_REGS.host_g})`
+const URL_TAIL_REG = `(?<tail>${URL_REGS.pathname_g}?(${URL_REGS.hash_g}|${URL_REGS.search_g})?)`
+const URL_REG = new RegExp(`${URL_ORIGIN_REG}?${URL_TAIL_REG}`, 'i')
+
+const URL_ORIGIN_NO_GROUP = `(${URL_REGS.protocol}${URL_REGS.host})`
+const URL_SEARCH_NO_GROUP = `(${URL_REGS.hash}|${URL_REGS.search})`
+const URL_TAIL_NO_GROUP = `(${URL_REGS.pathname}${URL_SEARCH_NO_GROUP}?|${URL_SEARCH_NO_GROUP})`
+const URL_REG_NO_GROUP = new RegExp(`(${URL_ORIGIN_NO_GROUP}${URL_TAIL_NO_GROUP}?)|(${URL_TAIL_NO_GROUP})`, 'i')
+const URL_REG_NO_GROUP_ALL = new RegExp(`^${URL_REG_NO_GROUP.source}$`, URL_REG.flags)
+
+const testUrl = (str, all) => str && (all ? URL_REG_NO_GROUP_ALL : URL_REG_NO_GROUP).test(str)
 
 const execUrlNormalize = (groups) => {
   const defaultProtocol = core.options.protocol
@@ -35,8 +40,8 @@ const execUrlNormalize = (groups) => {
         const [protocol, slash] = groups[key].split(':')
         if (!slash) {
           groups[key] = defaultProtocol
-          groups.origin = defaultProtocol + groups.origin
-          groups.href = defaultProtocol + groups.href
+          groups.origin = defaultProtocol + ':' + groups.origin
+          groups.href = defaultProtocol + ':' + groups.href
         } else {
           groups[key] = protocol
         }
@@ -105,7 +110,9 @@ const parseStyleUrl = (str, test) => {
 const getExecResult = (str, reg, condition = true) => {
   const regG = new RegExp(reg, 'g')
   const result = []
+  let cur
   while (cur = regG.exec(str)) {
+    if (!cur[0]) break
     if (typeof condition === 'function' ? condition(cur) : condition) {
       result.push(cur.groups)
     }

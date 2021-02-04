@@ -49,7 +49,7 @@ const IgnoreType = {
  * 需要忽略的节点
  * @param node 
  */
-function ignoreNode(node, sourceFile) {
+function isIgnoreNode(node, sourceFile) {
   // ignore console
   if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
     (
@@ -64,23 +64,16 @@ function ignoreNode(node, sourceFile) {
   }
   // type definition
   if (ts.isTypeNode(node)) return IgnoreType.TypeNode
-
   // ignore console
-  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
-    (
-      node.expression.name.escapedText === 'log'
-    )) {
-    return IgnoreType.Log;
-  }
-  // excel的时间log定义
+  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.escapedText === 'log') return IgnoreType.Log
   if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'SPEED_REPORT_LOG') return IgnoreType.SpeedReportLog
-  // ignore Error
+  // Error
   if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Error') return IgnoreType.ErrorExp
-  // // 对象属性名允许中文
-  // if (node.parent && ts.isPropertyAssignment(node.parent) && node === node.parent.name) return IgnoreType.Property;
-  // 忽略enum定义，如有需要请自行处理
-  if (ts.isEnumDeclaration(node)) return IgnoreType.Enum;
-  // 特殊注释 @i18n-ignore，忽略下一行
+  // Property
+  if (node.parent && ts.isPropertyAssignment(node.parent) && node === node.parent.name) return IgnoreType.Property
+  // Enum
+  if (ts.isEnumDeclaration(node)) return IgnoreType.Enum
+  // specific comment
   const comments = sourceFile.getFullText().substr(node.getFullStart(), node.getStart(sourceFile) - node.getFullStart())
   if (/@local-ignore/.test(comments)) return IgnoreType.IgnoreComment
 
@@ -96,6 +89,7 @@ class TsProcessor {
   getChangeset(root = this.sourceFile, onlyChild) {
     const changeset = new Changeset(this.sourceFile)
     const nodeVisitor = (node) => {
+      if (isIgnoreNode(node, this.sourceFile)) return
       const result = this.process(node)
 
       if (result) {

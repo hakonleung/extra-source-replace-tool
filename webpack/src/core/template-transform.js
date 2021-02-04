@@ -12,7 +12,7 @@ const {
   execStyleUrl
 } = require('../utils/url-parser')
 const core = require('./')
-const { TsTransformer } = require('./ts-transformer')
+const TsTransformer = require('./ts-transformer')
 
 const dfs = (node, handler) => {
   const stack = [node]
@@ -96,6 +96,7 @@ const genPromise = (item) => {
       return new TsTransformer(undefined, text, core.options)
         .transformCode()
         .then(transformedCode => {
+          debugger
           const textNode = new domHandler.Text(transformedCode)
           node.children = [textNode]
         })
@@ -127,7 +128,9 @@ function templateTransform(html) {
         console.log(err)
         process.exit(1)
       })
-  } catch {}
+  } catch (err) {
+    console.error(err)
+  }
   return Promise.resolve(html)
 }
 
