@@ -12,7 +12,7 @@ class Changeset {
     this._changesets = []
   }
 
-  get changesets() {
+  get value() {
     return this._changesets.map((cs, i) => {
       const preCsEnd = i ? this._changesets[i - 1].end : 0
       return {

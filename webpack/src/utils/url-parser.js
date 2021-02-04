@@ -1,13 +1,19 @@
 const core = require('../core/index.js')
 
+const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#`
+const VALID_CHARS = {
+  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#']/g, '').split('').join('\\'),
+  host: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#']/g, '').split('').join('\\'),
+  hash: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.?#']/g, '').split('').join('\\'),
+  search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.?#']/g, '').split('').join('\\'),
+}
 const URL_REGS = {
   protocol: /(?<protocol>(https?:)?\/\/)/,
-  pathname: /(?<pathname>(^[^/#?\s'"]+)?(\/[^/#?\s'"]+)*\/?)/,
-  host: /(?<host>([^./:\s'"])+(\.[^./:\s'"]+)+(:\d+)?)/,
-  hash: /(#(?<hash>[^\s'"]+))/,
-  search: /(\?(?<search>[^\s'"]+))/
+  pathname: new RegExp(`(?<pathname>(^[${VALID_CHARS.pathname}]+)?(\\/[${VALID_CHARS.pathname}]+)*\\/?)`),
+  host: new RegExp(`(?<host>([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(:\d+)?)`),
+  hash: new RegExp(`/(?<hash>#[${VALID_CHARS.hash}]+)`),
+  search: new RegExp(`(?<search>\\?[${VALID_CHARS.search}]+)`)
 }
-
 const URL_ORIGIN_REG = new RegExp(`(?<origin>${URL_REGS.protocol.source}${URL_REGS.host.source})`)
 const URL_TAIL_REG = new RegExp(`(?<tail>${URL_REGS.pathname.source}?(${URL_REGS.hash.source}|${URL_REGS.search.source})?)`)
 const URL_REG = new RegExp(`(${URL_ORIGIN_REG.source})?${URL_TAIL_REG.source}`, 'i')
