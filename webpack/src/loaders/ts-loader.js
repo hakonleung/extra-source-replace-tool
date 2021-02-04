@@ -14,11 +14,7 @@ module.exports = function (source, map) {
 
   const callback = this.async()
   new TsTransformer(path.relative(options.context, file), source, options)
-    .getTransformCode()
-    .then(transformedCode => {
-      callback(null, source)
-    })
-    .catch(e => {
-      callback(e, null)
-    })
+    .transformCode()
+    .then(transformedCode => callback(null, transformedCode))
+    .catch(e => callback(e, null))
 }

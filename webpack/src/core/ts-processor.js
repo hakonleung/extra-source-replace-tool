@@ -95,7 +95,7 @@ class TsProcessor {
   }
 
   getChangeset(root = this.sourceFile, onlyChild) {
-    const changeset = new Changeset()
+    const changeset = new Changeset(this.sourceFile)
     const nodeVisitor = (node) => {
       const result = this.process(node)
 
@@ -150,10 +150,11 @@ class TsProcessor {
       text = node.head.text
       incomplete = true
     }
-    let fullInfo
-    return text && (fullInfo = getUrlFullInfo(text, incomplete)) && {
-      ...fullInfo,
-      node
+    let location
+    return text && (location = getUrlFullInfo(text, incomplete)) && {
+      node,
+      text,
+      location,
     } || null
   }
 

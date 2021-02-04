@@ -1,13 +1,14 @@
 class Changeset {
-  constructor() {
+  constructor(sourceFile) {
     // {
     //   start: 0,
     //   end: 0,
-    //   origin: '',
+    //   text: '',
     //   target: '',
     //   node: null,
     //   meta: null
     // }
+    this.sourceFile = sourceFile
     this._changesets = []
   }
 

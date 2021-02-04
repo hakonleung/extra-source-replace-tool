@@ -2,13 +2,13 @@ const core = require('../core/index.js')
 
 const URL_REGS = {
   protocol: /(?<protocol>(https?:)?\/\/)/,
-  pathname: /(?<pathname>(\/[^/#?\s'"]+)*\/?)/,
+  pathname: /(?<pathname>(^[^/#?\s'"]+)?(\/[^/#?\s'"]+)*\/?)/,
   host: /(?<host>([^./:\s'"])+(\.[^./:\s'"]+)+(:\d+)?)/,
-  hash: /(?<hash>#[^\s'"]+)/,
-  search: /(?<search>\?[^\s'"]+)/
+  hash: /(#(?<hash>[^\s'"]+))/,
+  search: /(\?(?<search>[^\s'"]+))/
 }
 
-const URL_ORIGIN_REG = new RegExp(`(?<origin>${URL_REGS.protocol.source}?${URL_REGS.host.source})`)
+const URL_ORIGIN_REG = new RegExp(`(?<origin>${URL_REGS.protocol.source}${URL_REGS.host.source})`)
 const URL_TAIL_REG = new RegExp(`(?<tail>${URL_REGS.pathname.source}?(${URL_REGS.hash.source}|${URL_REGS.search.source})?)`)
 const URL_REG = new RegExp(`(${URL_ORIGIN_REG.source})?${URL_TAIL_REG.source}`, 'i')
 const URL_REG_START = new RegExp(`^${URL_REG.source}`, URL_REG.flags)
@@ -48,6 +48,10 @@ const execUrlNormalize = (groups) => {
         groups.hostname = hostname
         groups.port = port
       }
+    } else if (key === 'pathname') {
+      if (groups[key] !== undefined && !groups[key].startsWith('/')) {
+        groups[key] = '/' + groups[key]
+      }
     }
     if (groups[key] === undefined) {
       groups[key] = ''
@@ -69,16 +73,16 @@ const parseUrl = (str) => {
 const getUrlFullInfo = (str, incomplete) => {
   const location = parseUrl(str)
   if (!location) return null
-  const res = { text: str, location, ext: '' }
+  location.ext = ''
   if (!location.host && location.pathname || core.options.origins.includes(location.origin)) {
-    res.isRelative = true
+    location.inside = true
   }
   // empty ext regarded as source, though cgi
   if (!incomplete) {
     const ext = /\.([0-0a-z]+)$/i.exec(location.search)
-    if (ext) res.ext = ext[1]
+    if (ext) location.ext = ext[1]
   }
-  return res
+  return location
 }
 
 const URL_STYLE_REG = /url\((?<origin>(['"]?)(?<url>[^'" ]+)\2)\)/i
@@ -105,11 +109,34 @@ const execUrl = (str) => getExecResult(str, URL_REG)
 
 const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !test || testUrl(cur.groups.url, true))
 
+const transformCgi = (url) => {
+  const options = core.options
+  // use options
+  if (typeof options.transformCgi === 'function') return options.transformCgi(url)
+  const urlObj = typeof url === 'object' ? url : getUrlFullInfo(url)
+  // not url
+  if (!urlObj) return url
+  // extra
+  if (!urlObj.inside) return options.blockExtraUrl ? '' : url
+  // block path
+  if (options.blockPaths.includes(urlObj.pathname)) return ''
+  const l1Paths = Object.keys(options.l1PathMap)
+  // don`t need to transform
+  if (l1Paths.some((key) => urlObj.pathname.indexOf(options.l1PathMap[key]) === 0)) return url
+  const levelPaths = urlObj.pathname.split('/').filter(v => v)
+  // can`t transform
+  if (!l1Paths.includes(levelPaths[0])) return options.blockIntraUrl ? '' : url
+  levelPaths[0] = options.l1PathMap[levelPaths[0]]
+  levelPaths[1] = options.l2PathMap[levelPaths[1]] || levelPaths[1]
+  return levelPaths.join('/') + (urlObj.hash || urlObj.search)
+}
+
 module.exports = {
   testUrl,
   parseUrl,
   getUrlFullInfo,
   parseStyleUrl,
   execUrl,
-  execStyleUrl
+  execStyleUrl,
+  transformCgi
 }

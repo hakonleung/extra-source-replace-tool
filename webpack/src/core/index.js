@@ -12,7 +12,21 @@ const DEFAULT_OPTIONS = {
   validCallAccesses: [
     ['window', 'open'],
     ['window', 'location', 'replace'],
-  ]
+  ],
+  transformCgi: null,
+  blockExtraUrl: true,
+  blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+  blockIntraUrl: false,
+  l1PathMap: {
+    doc: '/cgi-bin/doc',
+    wedoc: '/cgi-bin/doc',
+    txdoc: '/cgi-bin/doc',
+    comment: '/cgi-bin/doc',
+    disk: '/cgi-bin/disk'
+  },
+  l2PathMap: {
+    getinfo: 'get_info'
+  }
 }
 const core = {}
 

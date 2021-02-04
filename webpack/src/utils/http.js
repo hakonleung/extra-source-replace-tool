@@ -9,10 +9,10 @@ const FETCH_PROTOCOL = {
 
 const httpGet = (url, cb) => new Promise((resolve, reject) => {
   const fullInfo = getUrlFullInfo(url)
-  if (!fullInfo || fullInfo.isRelative || !FETCH_PROTOCOL[fullInfo.protocol]) {
+  if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
     resolve()
   }
-  
+  debugger
   FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, function (res, req) {
     const chunks = []
     let size = 0
