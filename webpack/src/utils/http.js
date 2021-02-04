@@ -24,7 +24,7 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   if (data = sourceCache.get(fullInfo.href)) {
     onEnd()
   }
-  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, function (res, req) {
+  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, function (res) {
     const chunks = []
     let size = 0
     res.on('data', function (chunk) {
@@ -33,7 +33,7 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
     })
     res.on('end', function (err) {
       if (err) reject(err)
-      data = { res, req, chunks, size }
+      data = { res, chunks, size }
       sourceCache.set(fullInfo.href, data)
       onEnd()
     })

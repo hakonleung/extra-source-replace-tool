@@ -96,7 +96,7 @@ const genPromise = (item) => {
       return new TsTransformer(undefined, text, core.options)
         .transformCode()
         .then(transformedCode => {
-          debugger
+          // debugger
           const textNode = new domHandler.Text(transformedCode)
           node.children = [textNode]
         })

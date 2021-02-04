@@ -43,6 +43,7 @@ const IgnoreType = {
   Property: 'Property',
   Enum: 'Enum',
   IgnoreComment: 'IgnoreComment',
+  Import: 'Import'
 }
 
 /**
@@ -50,6 +51,9 @@ const IgnoreType = {
  * @param node 
  */
 function isIgnoreNode(node, sourceFile) {
+  if (ts.isImportDeclaration(node)) {
+    return IgnoreType.Import
+  }
   // ignore console
   if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
     (
