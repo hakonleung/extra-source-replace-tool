@@ -1,12 +1,17 @@
 const ts = require('typescript')
 const TsProcessor = require('./ts-processor')
 const { transformCgi } = require('../utils/url-parser')
+const {
+  getParseBase64Promise,
+  getParseJsPromise
+} = require('../utils/http')
 
 class TsTransformer {
   constructor(filename, code, opts) {
+    this.filename = filename || `temp-${Date.now()}`
     this.code = code
     this.sourceFile = ts.createSourceFile(
-      filename || `temp-${Date.now()}`,
+      this.filename,
       code,
       ts.ScriptTarget.Latest,
       /*setParentNodes */ true
@@ -17,9 +22,32 @@ class TsTransformer {
   transformCode() {
     const changeset = this.processor.getChangeset()
     let transformedCode = this.code
-    const promises = []
-    const genNewCode = (cs, parent) => {
-      const { node, location } = cs
+    const genNewCodePromise = (cs, isSpecific) => {
+      let targetCs
+      if (!isSpecific) {
+        const { location, node } = cs
+        if (location.ext && location.ext !== 'js' && !ts.isTemplateExpression(node)) {
+          return getParseBase64Promise(location.href).then(url => {
+            let newNode = null
+            if (ts.isStringLiteral(node)) {
+              newNode = ts.createStringLiteral(url)
+            } else if (ts.isNoSubstitutionTemplateLiteral(node)) {
+              newNode = ts.createNoSubstitutionTemplateLiteral(url)
+            }
+            return newNode && {
+              ...cs,
+              target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+            }
+          })
+        }
+        targetCs = cs
+      } else {
+        if (!cs.child) return Promise.resolve()
+        targetCs = cs.child[0].value[0]
+      }
+      // cgi
+      const { node, location } = targetCs
+      if (location.ext) return Promise.resolve()
       const newUrl = transformCgi(location)
       let newNode = null
       if (ts.isStringLiteral(node)) {
@@ -29,35 +57,23 @@ class TsTransformer {
       } else if (ts.isTemplateExpression(node)) {
         newNode = ts.createTemplateExpression(ts.createTemplateHead(newUrl), node.templateSpans)
       }
-      if (!newNode) return
-      if (parent) {
-        newNode = ts.transform(parent, [(context) => (root) => {
+      if (!newNode) return Promise.resolve()
+      if (isSpecific) {
+        newNode = ts.transform(cs.node, [(context) => (root) => {
           const nodeVisitor = (old) => old === node ? newNode : ts.visitEachChild(old, nodeVisitor, context)
           return ts.visitNode(root, nodeVisitor)
         }]).transformed[0]
       }
-      return ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+      return Promise.resolve({
+        cs,
+        target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+      })
     }
-    changeset.value.forEach((cs) => {
-      const { node, text, access, child } = cs
-      let target
-      if (access instanceof Array && child) {
-        // replace expression such as "location = 'xxx'", "window.open('xxx')"
-        target = genNewCode(child[0].value[0], node)
-      } else if (text) {
-        // replace string
-        target = genNewCode(cs)
-      }
-      if (target !== undefined) {
-        promises.push(Promise.resolve({
-          ...cs,
-          target
-        }))
-      }
-    })
+    const promises = changeset.value.map((cs) => genNewCodePromise(cs, cs.access instanceof Array))
     return Promise.all(promises).then(res => {
       let diff = 0
       res.forEach(cs => {
+        if (!cs) return
         transformedCode = transformedCode.substr(0, cs.start + diff) + cs.target + transformedCode.substr(cs.end + diff)
         diff += cs.target.length - cs.end + cs.start
       })

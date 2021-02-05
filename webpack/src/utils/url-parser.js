@@ -92,7 +92,7 @@ const getUrlFullInfo = (str, incomplete) => {
   }
   // empty ext regarded as source, though cgi
   if (!incomplete) {
-    const ext = /\.([0-0a-z]+)$/i.exec(location.search)
+    const ext = /\.([0-0a-z]+)$/i.exec(location.pathname)
     if (ext) location.ext = ext[1]
   }
   return location
