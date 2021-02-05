@@ -25,9 +25,13 @@ class TsTransformer {
     const genNewCodePromise = (cs, isSpecific) => {
       let targetCs
       if (!isSpecific) {
-        const { location, node } = cs
+        const { location, node, text } = cs
         if (location.ext && location.ext !== 'js' && !ts.isTemplateExpression(node)) {
+          // not support template
           return getParseBase64Promise(location.href).then(url => {
+            if (location.href !== text) {
+              url = text.replace(location.href, url)
+            }
             let newNode = null
             if (ts.isStringLiteral(node)) {
               newNode = ts.createStringLiteral(url)

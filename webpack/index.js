@@ -41,6 +41,9 @@ const config = {
     timings: true,
     colors: true,
   },
+  resolve: {
+    extensions: [".ts", ".tsx", ".js"]
+  },
 }
 
 const compiler = webpack(config)

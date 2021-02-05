@@ -1,5 +1,5 @@
 const ts = require('typescript')
-const { getUrlFullInfo } = require('../utils/url-parser')
+const { getUrlFullInfo, parseStyleUrl } = require('../utils/url-parser')
 const {
   stringPlusToTemplateExpression,
   getAccess
@@ -88,20 +88,31 @@ class TsProcessor {
   constructor(sourceFile, options) {
     this.sourceFile = sourceFile
     this.options = options
+    this.jsxAttribute = null
   }
 
   getChangeset(root = this.sourceFile, onlyChild) {
+    // if (this.sourceFile.fileName.indexOf('test') !== -1) {
+    //   debugger
+    // }
+    
     const changeset = new Changeset(this.sourceFile)
     const nodeVisitor = (node) => {
+      if (ts.isJsxAttribute(node)) {
+        this.jsxAttribute = node
+      }
       if (isIgnoreNode(node, this.sourceFile)) return
-      const result = this.process(node)
 
+      const result = this.process(node)
       if (result) {
         changeset.add(result)
         return
       }
 
       ts.forEachChild(node, nodeVisitor)
+      if (this.jsxAttribute === node) {
+        this.jsxAttribute = null
+      }
     }
     
     ts[onlyChild ? 'forEachChild' : 'visitNode'](root, nodeVisitor)
@@ -143,6 +154,14 @@ class TsProcessor {
     let incomplete = false
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       text = node.text
+      if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(node.parent)) {
+        let location
+        return text && (location = parseStyleUrl(text, true)) && (location = getUrlFullInfo(location.url, incomplete)) && {
+          node,
+          text,
+          location,
+        } || null
+      }
     } else if (ts.isTemplateExpression(node)) {
       text = node.head.text
       incomplete = true

@@ -1,4 +1,4 @@
-// import JSX from './test'
+import JSX from './test.tsx'
 import './index.css'
 declare var window: Window;
 
@@ -8,3 +8,5 @@ let a = `/doc/getinfo?${1}`
 a = `doc/getinfo`
 window.open('https://a.a', '_self')
 window.location.href = 'https://doc.weixin.qq.com/doc/getinfo'
+
+document.body.append(JSX)
