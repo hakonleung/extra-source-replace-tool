@@ -71,7 +71,7 @@ class TsTransformer {
         }]).transformed[0]
       }
       return Promise.resolve({
-        cs,
+        ...cs,
         target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
       })
     }

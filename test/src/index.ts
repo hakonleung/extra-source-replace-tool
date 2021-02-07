@@ -10,3 +10,5 @@ window.open('https://a.a', '_self')
 window.location.href = 'https://doc.weixin.qq.com/doc/getinfo'
 
 document.body.append(JSX)
+
+a = `background-image: url(https://rescdn.qqmail.com/node/wework/images/wwdoc_edit_expire.a6ecd3e29e.png)`
