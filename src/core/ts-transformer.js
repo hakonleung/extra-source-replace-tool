@@ -16,7 +16,7 @@ class TsTransformer {
       ts.ScriptTarget.Latest,
       /*setParentNodes */ true
     )
-    this.processor = new TsProcessor(this.sourceFile, {...opts})
+    this.processor = new TsProcessor(this.sourceFile, { ...opts })
   }
 
   transformCode() {
@@ -25,24 +25,26 @@ class TsTransformer {
     const genNewCodePromise = (cs, isSpecific) => {
       let targetCs
       if (!isSpecific) {
-        const { location, node, text } = cs
-        if (location.ext && location.ext !== 'js' && !ts.isTemplateExpression(node)) {
+        const { location, node, text, styleUrls } = cs
+        if (!ts.isTemplateExpression(node) && (styleUrls || location.ext && location.ext !== 'js')) {
           // not support template
-          return getParseBase64Promise(location.href).then(url => {
-            if (location.href !== text) {
-              url = text.replace(location.href, url)
-            }
-            let newNode = null
-            if (ts.isStringLiteral(node)) {
-              newNode = ts.createStringLiteral(url)
-            } else if (ts.isNoSubstitutionTemplateLiteral(node)) {
-              newNode = ts.createNoSubstitutionTemplateLiteral(url)
-            }
-            return newNode && {
-              ...cs,
-              target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
-            }
-          })
+          const promises = (styleUrls || [location]).map(({ href }) => getParseBase64Promise(href))
+          let newText = text
+          return Promise
+            .all(promises)
+            .then(res => res.forEach((v, i) => v && (newText = styleUrls ? newText.replace(styleUrls[i].origin, v) : v)))
+            .then(() => {
+              let newNode = null
+              if (ts.isStringLiteral(node)) {
+                newNode = ts.createStringLiteral(newText)
+              } else if (ts.isNoSubstitutionTemplateLiteral(node)) {
+                newNode = ts.createNoSubstitutionTemplateLiteral(newText)
+              }
+              return newNode && {
+                ...cs,
+                target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+              }
+            })
         }
         targetCs = cs
       } else {

@@ -1,5 +1,5 @@
 const ts = require('typescript')
-const { getUrlFullInfo, parseStyleUrl } = require('../utils/url-parser')
+const { getUrlFullInfo, execStyleUrl } = require('../utils/url-parser')
 const {
   stringPlusToTemplateExpression,
   getAccess
@@ -11,7 +11,7 @@ const keywords = 'align-content align-items align-self all animation animation-d
 const totalSet = new Set([...keywords])
 
 function cssDetect(code) {
-  if (code.length < 100) return false
+  if (code.length < 50) return false
 
   let c = 0
   let matchedLength = 0
@@ -154,13 +154,16 @@ class TsProcessor {
     let incomplete = false
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       text = node.text
-      if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(node.parent)) {
-        let location
-        return text && (location = parseStyleUrl(text, true)) && (location = getUrlFullInfo(location.url, incomplete)) && {
+      let styleUrls
+      if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(node.parent) || cssDetect(text)) {
+        styleUrls = execStyleUrl(text, true)
+      }
+      if (styleUrls) {
+        return {
           node,
           text,
-          location,
-        } || null
+          styleUrls
+        }
       }
     } else if (ts.isTemplateExpression(node)) {
       text = node.head.text

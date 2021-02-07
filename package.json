@@ -47,8 +47,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "rm -rf dev && NODE_ENV=development TS_NODE_PROJECT=webpack/tsconfig.json node --trace-deprecation -r ts-node/register webpack/index",
-    "build": "rm -rf dist && NODE_ENV=production TS_NODE_PROJECT=webpack/tsconfig.json node -r ts-node/register webpack/index"
+    "dev": "rm -rf test/dev && NODE_ENV=development TS_NODE_PROJECT=test/tsconfig.json node --trace-deprecation -r ts-node/register test/webpack/index",
+    "build": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index"
   },
   "author": "hakon",
   "license": "ISC"

@@ -11,7 +11,7 @@ const {
   execUrl,
   execStyleUrl
 } = require('../utils/url-parser')
-const core = require('./')
+const core = require('.')
 const TsTransformer = require('./ts-transformer')
 
 const dfs = (node, handler) => {
@@ -76,7 +76,7 @@ const genPromise = (item) => {
     // style attr
     const extractResult = execStyleUrl(node.attribs[attr], true)
     return Promise
-      .all(extractResult.map(({ url }) => getParseBase64Promise(url)))
+      .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
       .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
   } else if (attr) {
     if (attr === 'src' && node.name === 'script') {

@@ -2,12 +2,12 @@ const webpack = require('webpack')
 const path = require('path')
 const plugins = require('./plugins')
 const modules = require('./modules')
-const { devServer } = require('./dev-server')
+const { OUTPUT_PATH } = require('./constant')
 
 const obeserver = {}
 Object.defineProperty(obeserver, 'outputPath', {
   get() {
-    return path.resolve(process.cwd(), process.env.NODE_ENV === 'development' ? 'dev' : 'dist')
+    return path.resolve(OUTPUT_PATH, process.env.NODE_ENV === 'development' ? 'dev' : 'dist')
   },
 })
 Object.defineProperty(obeserver, 'filename', {
@@ -18,12 +18,12 @@ Object.defineProperty(obeserver, 'filename', {
 
 const config = {
   mode: process.env.NODE_ENV,
-  entry: path.resolve(process.cwd(), './src/index.ts'),
+  entry: path.resolve(OUTPUT_PATH, './src/index.ts'),
   output: {
     filename: obeserver.filename,
     path: obeserver.outputPath,
   },
-  context: process.cwd(),
+  context: OUTPUT_PATH,
   devtool: 'cheap-module-source-map',
   // watch: true,
   // watchOptions: {

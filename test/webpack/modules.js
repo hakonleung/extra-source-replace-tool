@@ -1,6 +1,7 @@
 const path = require('path')
-const tsLoader = path.resolve(process.cwd(), './webpack/src/loaders/ts-loader')
-const cssLoader = path.resolve(process.cwd(), './webpack/src/loaders/css-loader')
+const { ROOT } = require('./constant')
+const tsLoader = path.resolve(ROOT, './src/loaders/ts-loader')
+const cssLoader = path.resolve(ROOT, './src/loaders/css-loader')
 const exclude = [/node_modules/]
 const cssLoaders = ['style-loader', 'css-loader', cssLoader, {
   loader: "postcss-loader",

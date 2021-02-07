@@ -98,12 +98,12 @@ const getUrlFullInfo = (str, incomplete) => {
   return location
 }
 
-const URL_STYLE_REG = /url\((?<origin>(['"]?)(?<url>[^'" ]+)\2)\)/i
+const URL_STYLE_REG = /url\((?<origin>(['"]?)(?<href>[^'" ]+)\2)\)/i
 
 const parseStyleUrl = (str, test) => {
   let res = URL_STYLE_REG.exec(str)
   if (!res) return null
-  const isValid = !test || testUrl(res.groups.url, true)
+  const isValid = !test || testUrl(res.groups.href, true)
   return isValid ? res.groups : null
 }
 
@@ -122,7 +122,7 @@ const getExecResult = (str, reg, condition = true) => {
 
 const execUrl = (str) => getExecResult(str, URL_REG)
 
-const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !test || testUrl(cur.groups.url, true))
+const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !test || testUrl(cur.groups.href, true))
 
 const transformCgi = (url) => {
   const options = core.options
