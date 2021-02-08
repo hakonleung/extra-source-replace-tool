@@ -92,8 +92,11 @@ const isAccessValid = (access, isCallExpression) => {
 }
 
 const getAccess = (node, verify, isCallExpression) => {
+  // get property access
   const access = []
   while (node) {
+    // property && element access expression
+    // only support identifier and string name
     if (ts.isIdentifier(node)) {
       access.unshift(node)
     } else if (node.name && ts.isIdentifier(node.name)) {
@@ -102,6 +105,7 @@ const getAccess = (node, verify, isCallExpression) => {
       if (ts.isStringLiteral(node.argumentExpression)) {
         access.unshift(node.argumentExpression)
       } else {
+        // not support
         return []
       }
     }
@@ -110,8 +114,17 @@ const getAccess = (node, verify, isCallExpression) => {
   return !verify || isAccessValid(access, isCallExpression) ? access : []
 }
 
+const isIgnoreFile = (source, map, filename) => {
+  const { options } = core
+  if (filename && options.ignorePath && options.ignorePath.test(filename)) return true
+  const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
+  const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
+  return leadingComment && /@local-ignore/.test(leadingComment[0])
+}
+
 module.exports = {
   stringPlusToTemplateExpression,
   isAccessValid,
-  getAccess
+  getAccess,
+  isIgnoreFile
 }

@@ -94,7 +94,7 @@ const genPromise = (item) => {
     if (node.name === 'script') {
       // js content
       return new TsTransformer(undefined, text, core.options)
-        .transformCode()
+        .transform()
         .then(transformedCode => {
           // debugger
           const textNode = new domHandler.Text(transformedCode)

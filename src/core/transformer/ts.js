@@ -1,25 +1,19 @@
 const ts = require('typescript')
-const TsProcessor = require('./ts-processor')
-const { transformCgi } = require('../utils/url-parser')
+const TsProcessor = require('../processor/ts')
+const { transformCgi } = require('../../utils/url-parser')
 const {
   getParseBase64Promise,
   getParseJsPromise
-} = require('../utils/http')
+} = require('../../utils/http')
+const Transformer = require('.')
 
-class TsTransformer {
-  constructor(filename, code, opts) {
-    this.filename = filename || `temp-${Date.now()}`
-    this.code = code
-    this.sourceFile = ts.createSourceFile(
-      this.filename,
-      code,
-      ts.ScriptTarget.Latest,
-      /*setParentNodes */ true
-    )
-    this.processor = new TsProcessor(this.sourceFile, { ...opts })
+class TsTransformer extends Transformer {
+  init() {
+    this.sourceFile = ts.createSourceFile(this.filename, this.code, ts.ScriptTarget.Latest, /*setParentNodes */ true)
+    this.processor = new TsProcessor(this.sourceFile, { ...this.options })
   }
 
-  transformCode() {
+  transform() {
     const changeset = this.processor.getChangeset()
     let transformedCode = this.code
     const genNewCodePromise = (cs, isSpecific) => {

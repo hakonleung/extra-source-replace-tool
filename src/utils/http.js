@@ -14,26 +14,21 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
     resolve()
   }
-  let data
+  let data = sourceCache.get(fullInfo.href)
   const onEnd = () => {
-    if (typeof cb === 'function') {
-      cb(data, { resolve, reject })
-    }
+    typeof cb === 'function' && cb(data, { resolve, reject })
     resolve(data)
   }
-  if (data = sourceCache.get(fullInfo.href)) {
-    onEnd()
-  }
-  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, function (res) {
+  // use cache
+  if (data) onEnd()
+  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
     const chunks = []
-    let size = 0
-    res.on('data', function (chunk) {
+    res.on('data', (chunk) => {
       chunks.push(chunk)
-      size += chunk.length
     })
-    res.on('end', function (err) {
+    res.on('end', (err) => {
       if (err) reject(err)
-      data = { res, chunks, size }
+      data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
       sourceCache.set(fullInfo.href, data)
       onEnd()
     })

@@ -1,20 +1,15 @@
-const path = require('path')
-const TsTransformer = require('../core/ts-transformer')
-const core = require('../core')
+const TsTransformer = require('../core/transformer/ts')
+const { isIgnoreFile } = require('../utils/ast')
 
-module.exports = function (source, map) {
-  const { options } = core
-  const req = this.currentRequest.split('!')
-  const file = req[req.length - 1]
-  if (options.ignorePath && options.ignorePath.test(file)) return source
-
-  const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
-  const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
-  if (leadingComment && /@local-ignore/.test(leadingComment[0])) return source
-
+module.exports = function (code, map) {
+  const filename = this.currentRequest.split('!').slice(-1)[0]
+  if (isIgnoreFile(code, map, filename)) {
+    return code
+  }
+  this.cacheable && this.cacheable(false)
   const callback = this.async()
-  new TsTransformer(path.relative(options.context, file), source, options)
-    .transformCode()
+  new TsTransformer(this, filename, code)
+    .transform()
     .then(transformedCode => callback(null, transformedCode))
     .catch(e => callback(e, null))
 }
