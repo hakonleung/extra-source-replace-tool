@@ -25,45 +25,26 @@ const dfs = (node, handler) => {
 const traversal = (root) => {
   const shouldTransformNodes = []
   const hanler = (node) => {
-    let text
     switch (node.name) {
       case 'link':
-        if (testUrl(node.attribs.href)) {
-          shouldTransformNodes.push({
-            node,
-            attr: 'href'
-          })
-        }
+        if (testUrl(node.attribs.href)) shouldTransformNodes.push({ node, attr: 'href' })
         return
       case 'style':
       case 'script':
-        text = node.children.reduce((r, v) => r + v.data, '')
+        const text = node.children.reduce((r, v) => r + v.data, '')
         if (testUrl(text)) {
           node.children = []
-          shouldTransformNodes.push({
-            node,
-            text,
-          })
+          shouldTransformNodes.push({ node, text })
           return
         }
       // case 'iframe':
       case 'source':
       case 'img':
-        if (testUrl(node.attribs.src)) {
-          shouldTransformNodes.push({
-            node,
-            attr: 'src'
-          })
-        }
+        if (testUrl(node.attribs.src)) shouldTransformNodes.push({ node, attr: 'src' })
         return
     }
 
-    if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true)) {
-      shouldTransformNodes.push({
-        node,
-        attr: 'style'
-      })
-    }
+    if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true)) shouldTransformNodes.push({ node, attr: 'style' })
   }
   dfs(root, hanler)
   return shouldTransformNodes

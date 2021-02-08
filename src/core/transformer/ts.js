@@ -19,14 +19,14 @@ class TsTransformer extends Transformer {
     const genNewCodePromise = (cs, isSpecific) => {
       let targetCs
       if (!isSpecific) {
-        const { location, node, text, styleUrls } = cs
-        if (!ts.isTemplateExpression(node) && (styleUrls || location.ext && location.ext !== 'js')) {
+        const { location, locations, node, text } = cs
+        if (!ts.isTemplateExpression(node) && (locations || location.ext && location.ext !== 'js')) {
           // not support template
-          const promises = (styleUrls || [location]).map(({ href }) => getParseBase64Promise(href))
+          const promises = (locations || [location]).map(({ href }) => getParseBase64Promise(href))
           let newText = text
           return Promise
             .all(promises)
-            .then(res => res.forEach((v, i) => v && (newText = styleUrls ? newText.replace(styleUrls[i].origin, v) : v)))
+            .then(res => res.forEach((v, i) => v && (newText = locations ? newText.replace(locations[i].origin, v) : v)))
             .then(() => {
               let newNode = null
               if (ts.isStringLiteral(node)) {

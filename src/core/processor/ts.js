@@ -152,24 +152,16 @@ class TsProcessor {
   stringProc(node) {
     let text = ''
     let incomplete = false
+    let location
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       text = node.text
-      let styleUrls
       if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(node.parent) || cssDetect(text)) {
-        styleUrls = execStyleUrl(text, true)
-      }
-      if (styleUrls) {
-        return {
-          node,
-          text,
-          styleUrls
-        }
+        if (location = execStyleUrl(text, true)) return { node, text, locations: location }
       }
     } else if (ts.isTemplateExpression(node)) {
       text = node.head.text
       incomplete = true
     }
-    let location
     return text && (location = getUrlFullInfo(text, incomplete)) && {
       node,
       text,
