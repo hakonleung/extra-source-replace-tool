@@ -6,6 +6,7 @@ const {
   getParseJsPromise
 } = require('../../utils/http')
 const Transformer = require('.')
+const core = require('../')
 
 class TsTransformer extends Transformer {
   init() {
@@ -48,7 +49,7 @@ class TsTransformer extends Transformer {
       // cgi
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
-      const newUrl = transformCgi(location)
+      const newUrl = transformCgi(location, core.options)
       let newNode = null
       if (ts.isStringLiteral(node)) {
         newNode = ts.createStringLiteral(newUrl)

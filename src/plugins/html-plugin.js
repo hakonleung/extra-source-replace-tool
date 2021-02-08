@@ -10,7 +10,10 @@ class HtmlLinkTransformPlugin {
     compiler.hooks.compilation.tap('HtmlLinkTransformPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
         'HtmlLinkTransformPlugin',
-        (data, cb) => new HtmlTransformer({ code: data.html }).transformAsync().then(html => cb(null, { ...data, html }))
+        (data, cb) => new HtmlTransformer({ code: data.html })
+          .transformAsync()
+          .then(html => cb(null, { ...data, html }))
+          .catch(e => cb(e))
       )
     })
   }

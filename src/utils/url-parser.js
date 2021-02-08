@@ -1,5 +1,3 @@
-const core = require('../core/index.js')
-
 const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#`
 const VALID_CHARS = {
   pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[;:@&=+$,/?#']/g, '').split('').join('\\'),
@@ -32,8 +30,8 @@ const URL_REG_NO_GROUP_ALL = new RegExp(`^${URL_REG_NO_GROUP.source}$`, URL_REG.
 
 const testUrl = (str, all) => str && (all ? URL_REG_NO_GROUP_ALL : URL_REG_NO_GROUP).test(str)
 
-const execUrlNormalize = (groups) => {
-  const defaultProtocol = core.options.protocol
+const execUrlNormalize = (groups, options = {}) => {
+  const defaultProtocol = options.protocol || 'http'
   Object.keys(groups).forEach(key => {
     if (key === 'protocol') {
       if (groups[key] !== undefined) {
@@ -72,7 +70,7 @@ const execUrlNormalize = (groups) => {
   return groups.origin || groups.tail ? groups : null
 }
 
-const parseUrl = (str) => {
+const parseUrl = (str, options = {}) => {
   if (str === undefined) return null
   let res = URL_REG.exec(str)
   if (!res) return null
@@ -80,14 +78,14 @@ const parseUrl = (str) => {
     href: res[0],
     ...res.groups
   }
-  return execUrlNormalize(res)
+  return execUrlNormalize(res, options)
 }
 
-const getUrlFullInfo = (str, incomplete) => {
-  const location = parseUrl(str)
+const getUrlFullInfo = (str, incomplete, options = {}) => {
+  const location = parseUrl(str, options)
   if (!location) return null
   location.ext = ''
-  if (!location.host && location.pathname || core.options.origins.includes(location.origin)) {
+  if (!location.host && location.pathname || options.origins && options.origins.includes(location.origin)) {
     location.inside = true
   }
   // empty ext regarded as source, though cgi
@@ -124,11 +122,10 @@ const execUrl = (str) => getExecResult(str, URL_REG)
 
 const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !test || testUrl(cur.groups.href, true))
 
-const transformCgi = (url) => {
-  const options = core.options
+const transformCgi = (url, options = {}) => {
   // use options
   if (typeof options.transformCgi === 'function') return options.transformCgi(url)
-  const urlObj = typeof url === 'object' ? url : getUrlFullInfo(url)
+  const urlObj = typeof url === 'object' ? url : getUrlFullInfo(url, options)
   // not url
   if (!urlObj) return url
   // extra
