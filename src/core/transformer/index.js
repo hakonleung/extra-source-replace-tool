@@ -2,19 +2,20 @@ const path = require('path')
 const core = require('..')
 
 class Transformer {
-  constructor(loader, filename, code, meta, options = core.options) {
-    const context = options.context || process.cwd()
-    this.filename = filename ? path.relative(context, filename) : `temp-${Date.now()}`
+  constructor({ code, map, meta, filename }, loader, options = core.options) {
     this.code = code
-    this.loader = loader
+    this.map = map
+    this.filename = filename ? path.relative(options.context || process.cwd(), filename) : `temp-${Date.now()}`
     this.options = options
-    this.meta = meta
+    this.loader = loader
     this.init()
   }
 
   init() {}
 
-  async transform() {}
+  transform() {}
+
+  async transformAsync() {}
 }
 
 module.exports = Transformer

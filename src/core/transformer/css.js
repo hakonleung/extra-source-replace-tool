@@ -2,7 +2,6 @@ const postcss = require('postcss')
 const loaderUtils = require('loader-utils')
 const { getParseBase64Promise } = require('../../utils/http')
 const { parseStyleUrl } = require('../../utils/url-parser')
-const { isIgnoreFile } = require('../../utils/ast')
 const Transformer = require('.')
 
 class CssTransformer extends Transformer {
@@ -14,7 +13,7 @@ class CssTransformer extends Transformer {
     }
   }
 
-  async transform() {
+  transformAsync() {
     const transformList = []
     this.root.walkDecls(node => {
       const res = parseStyleUrl(node.value, true)
@@ -31,18 +30,8 @@ class CssTransformer extends Transformer {
       .then((values) => {
         values.forEach((v, i) => v && (transformList[i].node.value = transformList[i].node.value.replace(transformList[i].origin, v)))
 
-        const options = loaderUtils.getOptions(this.loader)
-        const processOptions = { prev: this.sourceMap }
 
-        if (typeof options.sourceMap !== "undefined" ? options.sourceMap : this.sourceMap) {
-          processOptions.map = {
-            inline: false,
-            annotation: false,
-            ...processOptions.map
-          }
-        }
-
-        const result = postcss().process(this.root, processOptions)
+        const result = postcss().process(this.root, loaderUtils.getOptions(this.loader))
 
         result.meta = {
           ast: {

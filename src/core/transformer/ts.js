@@ -13,7 +13,7 @@ class TsTransformer extends Transformer {
     this.processor = new TsProcessor(this.sourceFile, { ...this.options })
   }
 
-  transform() {
+  transformAsync() {
     const changeset = this.processor.getChangeset()
     let transformedCode = this.code
     const genNewCodePromise = (cs, isSpecific) => {

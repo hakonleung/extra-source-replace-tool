@@ -11,8 +11,7 @@ const {
   execUrl,
   execStyleUrl
 } = require('../utils/url-parser')
-const core = require('.')
-const TsTransformer = require('./ts-transformer')
+const TsTransformer = require('./transformer/ts')
 
 const dfs = (node, handler) => {
   const stack = [node]
@@ -93,8 +92,8 @@ const genPromise = (item) => {
   } else {
     if (node.name === 'script') {
       // js content
-      return new TsTransformer(undefined, text, core.options)
-        .transform()
+      return new TsTransformer({ code: text })
+        .transformAsync()
         .then(transformedCode => {
           // debugger
           const textNode = new domHandler.Text(transformedCode)
@@ -126,7 +125,6 @@ function templateTransform(html) {
       .then(() => domSerializer.default(root))
       .catch(err => {
         console.log(err)
-        process.exit(1)
       })
   } catch (err) {
     console.error(err)
