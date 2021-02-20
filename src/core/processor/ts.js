@@ -2,7 +2,8 @@ const ts = require('typescript')
 const { getUrlFullInfo, execStyleUrl } = require('../../utils/url-parser')
 const {
   stringPlusToTemplateExpression,
-  getAccess
+  getAccess,
+  printNode
 } = require('../../utils/ast')
 const Changeset = require('../changeset')
 const core = require('../../core')
@@ -56,15 +57,9 @@ function isIgnoreNode(node, sourceFile) {
     return IgnoreType.Import
   }
   // ignore console
-  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
-    (
-      /^console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^window.console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^__console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^window.__console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^window.__log\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      false
-    )) {
+  if (ts.isCallExpression(node)
+    && ts.isPropertyAccessExpression(node.expression)
+    && /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())) {
     return IgnoreType.Console
   }
   // type definition
@@ -96,7 +91,7 @@ class TsProcessor {
     // if (this.sourceFile.fileName.indexOf('test') !== -1) {
     //   debugger
     // }
-    
+
     const changeset = new Changeset(this.sourceFile)
     const nodeVisitor = (node) => {
       if (ts.isJsxAttribute(node)) {
@@ -115,25 +110,25 @@ class TsProcessor {
         this.jsxAttribute = null
       }
     }
-    
+
     ts[onlyChild ? 'forEachChild' : 'visitNode'](root, nodeVisitor)
     return changeset
   }
 
   process(node) {
     let result = null
-    ;[
-      this.expressionProc,
-      this.stringPlusProc,
-      this.stringProc,
-    ].some(proc => result = proc.call(this, node))
+      ;[
+        this.expressionProc,
+        this.stringPlusProc,
+        this.stringProc,
+      ].some(proc => result = proc.call(this, node))
 
     if (result) {
       if (result.start === undefined) {
         result.start = result.node.pos
         result.end = result.node.end
       }
-      result.code = ts.createPrinter().printNode(ts.EmitHint.Unspecified, result.node, this.sourceFile)
+      result.code = printNode(result.node, this.sourceFile)
     }
 
     return result
@@ -175,7 +170,7 @@ class TsProcessor {
     const isCallExpression = ts.isCallExpression(node)
     let accessEntry
     let argsEntry
-    
+
     if (isBinaryExpression || isCallExpression) {
       if (isBinaryExpression) {
         accessEntry = 'left'

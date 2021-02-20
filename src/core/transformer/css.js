@@ -30,7 +30,7 @@ class CssTransformer extends Transformer {
       .then((values) => {
         values.forEach((v, i) => v && (transformList[i].node.value = transformList[i].node.value.replace(transformList[i].origin, v)))
 
-        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader))
+        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader) || undefined)
 
         result.meta = {
           ast: {

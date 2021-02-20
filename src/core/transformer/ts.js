@@ -5,6 +5,7 @@ const {
   getParseBase64Promise,
   getParseJsPromise
 } = require('../../utils/http')
+const { printNode } = require('../../utils/ast')
 const Transformer = require('.')
 const core = require('../')
 
@@ -37,7 +38,7 @@ class TsTransformer extends Transformer {
               }
               return newNode && {
                 ...cs,
-                target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+                target: printNode(newNode, changeset.sourceFile)
               }
             })
         }
@@ -66,7 +67,7 @@ class TsTransformer extends Transformer {
       }
       return Promise.resolve({
         ...cs,
-        target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+        target: printNode(newNode, changeset.sourceFile)
       })
     }
     const promises = changeset.value.map((cs) => genNewCodePromise(cs, cs.access instanceof Array))

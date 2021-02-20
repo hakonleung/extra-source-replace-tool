@@ -22,18 +22,22 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   }
   // use cache
   if (data) onEnd()
-  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
-    const chunks = []
-    res.on('data', (chunk) => {
-      chunks.push(chunk)
+  try {
+    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
+      const chunks = []
+      res.on('data', (chunk) => {
+        chunks.push(chunk)
+      })
+      res.on('end', (err) => {
+        if (err) reject(err)
+        data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
+        sourceCache.set(fullInfo.href, data)
+        onEnd()
+      })
     })
-    res.on('end', (err) => {
-      if (err) reject(err)
-      data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
-      sourceCache.set(fullInfo.href, data)
-      onEnd()
-    })
-  })
+  } catch (err) {
+    resolve()
+  }
 })
 
 const getParseBase64Promise = (url) => httpGet(url, (data, promise) => {

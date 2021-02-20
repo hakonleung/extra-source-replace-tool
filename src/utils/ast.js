@@ -122,9 +122,18 @@ const isIgnoreFile = (source, map, filename) => {
   return leadingComment && /@local-ignore/.test(leadingComment[0])
 }
 
+const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
+  try {
+    return ts.createPrinter().printNode(hint, node, sourceFile)
+  } catch (err) {
+    debugger
+  }
+}
+
 module.exports = {
   stringPlusToTemplateExpression,
   isAccessValid,
   getAccess,
-  isIgnoreFile
+  isIgnoreFile,
+  printNode
 }
