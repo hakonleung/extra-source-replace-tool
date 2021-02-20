@@ -648,8 +648,7 @@ class TsTransformer extends Transformer {
         }
         targetCs = cs
       } else {
-        if (!cs.child || !cs.child[0].value[0]) return Promise.resolve()
-        targetCs = cs.child[0].value[0]
+        if (!cs.child || !(targetCs = cs.child[0].value[0])) return Promise.resolve()
       }
       // cgi
       const { node, location } = targetCs
