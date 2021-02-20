@@ -40,8 +40,6 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static injectJsCache = null;
-
   static getInjectJs() {
     if (!core.options.injectBlockMethod) return null
     if (!HtmlTransformer.injectJsCache) {
@@ -52,7 +50,7 @@ class HtmlTransformer extends Transformer {
         debugger
       }
     }
-    return HtmlTransformer.injectJsCache
+    return HtmlTransformer.injectJsCache || null
   }
 
   injectJs(head) {
