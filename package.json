@@ -3,7 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "dependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:dev": "rm -rf test/dev && NODE_ENV=development TS_NODE_PROJECT=test/tsconfig.json node --trace-deprecation -r ts-node/register test/webpack/index",
+    "test:prod": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index",
+    "inject:dev": "NODE_ENV=development node --trace-deprecation src/inject",
+    "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject"
+  },
+  "dependencies": {
+    "core-js": "^3.9.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.12.10",
     "@babel/plugin-proposal-class-properties": "^7.12.1",
@@ -16,6 +25,7 @@
     "@types/typescript": "^2.0.0",
     "@types/webpack-dev-middleware": "^4.1.0",
     "babel-loader": "^8.2.2",
+    "babel-preset-env": "^1.7.0",
     "css-loader": "^5.0.1",
     "cssnano": "^4.1.10",
     "dom-serializer": "^1.2.0",
@@ -32,6 +42,7 @@
     "postcss-loader": "^4.2.0",
     "postcss-preset-env": "^6.7.0",
     "react": "^17.0.1",
+    "react-dom": "^17.0.1",
     "safe-require": "^1.0.4",
     "sass-loader": "^10.1.1",
     "stats-webpack-plugin": "^0.7.0",
@@ -44,11 +55,6 @@
     "webpack-bundle-analyzer": "^4.4.0",
     "webpack-dev-server": "^3.11.2",
     "write-file-webpack-plugin": "^4.5.1"
-  },
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "rm -rf test/dev && NODE_ENV=development TS_NODE_PROJECT=test/tsconfig.json node --trace-deprecation -r ts-node/register test/webpack/index",
-    "build": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index"
   },
   "author": "hakon",
   "license": "ISC"

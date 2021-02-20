@@ -3,6 +3,7 @@ const { ROOT } = require('./constant')
 const tsLoader = path.resolve(ROOT, './src/loaders/ts-loader')
 const cssLoader = path.resolve(ROOT, './src/loaders/css-loader')
 const exclude = [/node_modules/]
+const babelOptions = require('../.babelrc')
 const cssLoaders = ['style-loader', 'css-loader', cssLoader, {
   loader: "postcss-loader",
   options: {
@@ -27,50 +28,7 @@ module.exports = {
       use: [
         {
           loader: 'babel-loader',
-          options: {
-            cacheDirectory: true,
-            sourceType: 'unambiguous',
-            presets: [
-              [
-                '@babel/preset-env',
-                {
-                  useBuiltIns: 'usage',
-                  targets: [
-                    '> 0.5%, last 2 versions, not IE < 11',
-                    'IE >= 11'
-                  ],
-                  corejs: {
-                    version: 3,
-                    proposals: true,
-                  }
-                },
-              ],
-              '@babel/preset-react',
-            ],
-            plugins: [
-              [
-                "@babel/plugin-proposal-decorators",
-                {
-                  legacy: true
-                }
-              ],
-              [
-                "@babel/plugin-proposal-class-properties",
-                {
-                  loose: true
-                }
-              ],
-              [
-                '@babel/plugin-transform-runtime',
-                {
-                  "helpers": true,
-                  "regenerator": false,
-                  "useESModules": true,
-                  "absoluteRuntime": false,
-                },
-              ],
-            ],
-          },
+          options: babelOptions
         },
         {
           loader: 'ts-loader',
@@ -84,62 +42,19 @@ module.exports = {
         }
       ],
     },
-    // {
-    //   test: /\.js$/,
-    //   exclude,
-    //   use: [
-    //     {
-    //       loader: 'babel-loader',
-    //       options: {
-    //         cacheDirectory: true,
-    //         sourceType: 'unambiguous',
-    //         presets: [
-    //           [
-    //             '@babel/preset-env',
-    //             {
-    //               useBuiltIns: 'usage',
-    //               targets: [
-    //                 '> 0.5%, last 2 versions, not IE < 11',
-    //                 'IE >= 11'
-    //               ],
-    //               corejs: {
-    //                 version: 3,
-    //                 proposals: true,
-    //               }
-    //             },
-    //           ],
-    //           '@babel/preset-react',
-    //         ],
-    //         plugins: [
-    //           [
-    //             "@babel/plugin-proposal-decorators",
-    //             {
-    //               legacy: true
-    //             }
-    //           ],
-    //           [
-    //             "@babel/plugin-proposal-class-properties",
-    //             {
-    //               loose: true
-    //             }
-    //           ],
-    //           [
-    //             '@babel/plugin-transform-runtime',
-    //             {
-    //               "helpers": true,
-    //               "regenerator": false,
-    //               "useESModules": true,
-    //               "absoluteRuntime": false,
-    //             },
-    //           ],
-    //         ],
-    //       },
-    //     },
-    //     // {
-    //     //   loader: hakonLoader
-    //     // }
-    //   ],
-    // },
+    {
+      test: /\.js$/,
+      exclude,
+      use: [
+        {
+          loader: 'babel-loader',
+          options: babelOptions
+        },
+        {
+          loader: tsLoader
+        }
+      ],
+    },
     {
       test: /\.css$/,
       exclude,

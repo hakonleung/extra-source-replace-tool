@@ -8,13 +8,63 @@ const {
 const {
   testUrl,
   parseStyleUrl,
-  execUrl,
   execStyleUrl
 } = require('../../utils/url-parser')
 const Transformer = require('.')
 const TsTransformer = require('./ts')
+const CssTransformer = require('./css')
+const fs = require('fs')
+const path = require('path')
+const core = require('../')
+
+const addNode = (node, parent, type = 'prepend') => {
+  // type append prepend reset
+  if (type === 'reset') {
+    parent.children = [node]
+  } else if (type === 'prepend') {
+    const nextSibling = parent.children[0]
+    parent.children.unshift(node)
+    if (nextSibling) {
+      node.next = nextSibling
+      nextSibling.prev = node
+    }
+  } else if (type === 'append') {
+    const previousSibling = parent.children[parent.children.length - 1]
+    parent.children.push(node)
+    if (previousSibling) {
+      node.prev = previousSibling
+      previousSibling.next = node
+    }
+  }
+  node.parent = parent
+}
 
 class HtmlTransformer extends Transformer {
+  static injectJsCache = null;
+
+  static getInjectJs() {
+    if (!core.options.injectBlockMethod) return null
+    if (!HtmlTransformer.injectJsCache) {
+      try {
+        const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
+        HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
+      } catch {
+        debugger
+      }
+    }
+    return HtmlTransformer.injectJsCache
+  }
+
+  injectJs(head) {
+    const js = HtmlTransformer.getInjectJs()
+    if (!js) return
+    if (!head) {
+      head = new domHandler.Element('head')
+      addNode(head, this.root)
+    }
+    addNode(new domHandler.Element('script', {}, [new domHandler.Text(js)]), head)
+  }
+
   init() {
     this.root = htmlparser2.parseDocument(this.code)
   }
@@ -29,6 +79,7 @@ class HtmlTransformer extends Transformer {
   }
 
   traverse() {
+    let head = null
     const shouldTransformNodes = []
     const hanler = (node) => {
       switch (node.name) {
@@ -48,11 +99,15 @@ class HtmlTransformer extends Transformer {
         case 'img':
           if (testUrl(node.attribs.src)) shouldTransformNodes.push({ node, attr: 'src' })
           return
+        case 'head':
+          head = node
+          return
       }
 
       if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true)) shouldTransformNodes.push({ node, attr: 'style' })
     }
     this.dfs(this.root, hanler)
+    this.injectJs(head)
     return shouldTransformNodes
   }
 
@@ -77,29 +132,12 @@ class HtmlTransformer extends Transformer {
         return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
       }
     } else {
-      if (node.name === 'script') {
-        // js content
-        return new TsTransformer({ code: text })
-          .transformAsync()
-          .then(transformedCode => {
-            // debugger
-            const textNode = new domHandler.Text(transformedCode)
-            node.children = [textNode]
-          })
-      }
-      // css
-      const extractResult = execUrl(text)
-      return Promise
-        .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
+      const transformer = node.name === 'script' ? TsTransformer : CssTransformer
+      return new transformer({ code: text })
+        .transformAsync()
         .then(res => {
-          let newText = text
-          res.forEach((v, i) => {
-            if (v) {
-              newText = newText.replace(extractResult[i].href, v)
-            }
-          })
-          const textNode = new domHandler.Text(newText)
-          node.children = [textNode]
+          const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
+          addNode(newTextNode, node, 'reset')
         })
     }
   }

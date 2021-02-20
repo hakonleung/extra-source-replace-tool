@@ -1,3 +1,5 @@
+import * as React from 'react'
+
 const JSX = (<div>
   <img src="https://rescdn.qqmail.com/node/wework/images/wwdoc_edit_expire.a6ecd3e29e.png" />
   <div className="inline test"></div>

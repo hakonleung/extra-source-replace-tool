@@ -1,75 +1,14 @@
-function test(global) {
-    var WEDOC_INNER_HOSTNAME_ARR = [global.location.hostname, 'doc.weixin.qq.com', ''];
-    var WEDOC_ORIGIN_F_P_ARR = [
-        'doc',
-        'wedoc',
-        'txdoc',
-        'comment',
-        'disk'
-        // 'info'
-    ];
-    var WEDOC_TARGET_F_P_MAP = {
-        'default': '/cgi-bin/doc',
-        'disk': '/cgi-bin/disk'
-    };
-    var WEDOC_TARGET_S_P_MAP = {
-        'getinfo': 'get_info'
-    };
-    var WEDOC_BLOCK_INNER_SOURCE = true;
-    var WEDOC_BLOCK_OUTTER_SOURCE = true;
-    var WEDOC_BLOCK_PATHNAME_ARR = ['/txdoc/getauthinfo', '/info/report'];
+const { transformCgi } = require('../utils/url-parser');
 
-    function handleUrl(url) {
-        var urlObj = getUrlObj(url);
-        if (!urlObj) return url;
+window.CORE_OPTIONS = JSON.parse('__OPTIONS__');
 
-        if (!WEDOC_INNER_HOSTNAME_ARR.includes(urlObj.hostname)) {
-            // 外链
-            return WEDOC_BLOCK_OUTTER_SOURCE ? '' : url;
-        }
-
-        var paths = urlObj.pathname || '';
-
-        if (WEDOC_BLOCK_PATHNAME_ARR.includes(paths)) {
-            // 阻止的请求
-            return '';
-        }
-
-        if (Object.keys(WEDOC_TARGET_F_P_MAP).some(function(key) {
-            return paths.indexOf(WEDOC_TARGET_F_P_MAP[key]) === 0
-        })) {
-            // 前缀和目标前缀相同，不用替换
-            return url;
-        }
-
-        paths = paths.split('/').filter(function(p) {
-            return p;
-        });
-
-        if (!WEDOC_ORIGIN_F_P_ARR.includes(paths[0])) {
-            // 内链，一级path不在白名单
-            return WEDOC_BLOCK_INNER_SOURCE ? '' : url;
-        }
-
-        // 替换一级
-        paths[0] = WEDOC_TARGET_F_P_MAP[paths[0]] || WEDOC_TARGET_F_P_MAP.default;
-        // 替换二级
-        paths[1] = WEDOC_TARGET_S_P_MAP[paths[1]] || paths[1];
-
-        return paths.join('/') + (urlObj.hash || urlObj.search);
-    }
-
+((global) => {
     function replaceMethods() {
         var options = [
             {
                 'target': XMLHttpRequest.prototype,
                 'methodName': 'open',
                 'urlArgIndex': 1
-            },
-            {
-                'target': global.location,
-                'methodName': 'replace',
-                'urlArgIndex': 0
             },
             {
                 'target': global,
@@ -92,14 +31,14 @@ function test(global) {
         function log(action, source, style) {
             if (!global.console) return;
             var value = '%c[local]api ' + action + ': ' + source
-            style = Object.keys(style).reduce(function(value, cur) {
+            style = Object.keys(style).reduce(function (value, cur) {
                 return value + cur + ':' + style[cur] + ';'
             }, '')
             global.console.log(value, style);
         }
 
         function blockAjax(oldMethod) {
-            return function() {
+            return function () {
                 if (this.readyState !== this.OPENED) {
                     var oldMethodName = /function (\w+)\(/.exec(oldMethod.toString());
                     oldMethodName = oldMethodName ? oldMethodName[1].toUpperCase() : '';
@@ -115,8 +54,8 @@ function test(global) {
         function replaceMethod(option) {
             var oldMethod = option.target[option.methodName];
             if (typeof option.urlArgIndex === 'number') {
-                option.target[option.methodName] = function() {
-                    var newUrl = handleUrl(arguments[option.urlArgIndex]);
+                option.target[option.methodName] = function () {
+                    var newUrl = transformCgi(arguments[option.urlArgIndex], CORE_OPTIONS);
                     log('proxy', '', {
                         'color': '#ff008a',
                         'font-size': '14px'
@@ -134,7 +73,7 @@ function test(global) {
                 }
             }
             if (typeof option.customMethod === 'function') {
-                option.target[option.methodName] = function() {
+                option.target[option.methodName] = function () {
                     return option.customMethod(oldMethod).apply(this, [].slice.call(arguments));
                 };
             }
@@ -142,4 +81,4 @@ function test(global) {
     }
 
     replaceMethods();
-}
+})(window);

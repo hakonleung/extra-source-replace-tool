@@ -11,7 +11,7 @@ const FETCH_PROTOCOL = {
 }
 
 const httpGet = (url, cb) => new Promise((resolve, reject) => {
-  const fullInfo = getUrlFullInfo(url, core.options)
+  const fullInfo = getUrlFullInfo(url, false, core.options)
   if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
     resolve()
   }

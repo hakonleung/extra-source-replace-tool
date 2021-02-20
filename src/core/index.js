@@ -26,7 +26,8 @@ const DEFAULT_OPTIONS = {
   },
   l2PathMap: {
     getinfo: 'get_info'
-  }
+  },
+  injectBlockMethod: true,
 }
 const core = {}
 

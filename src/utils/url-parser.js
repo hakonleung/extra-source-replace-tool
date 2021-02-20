@@ -125,7 +125,7 @@ const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !
 const transformCgi = (url, options = {}) => {
   // use options
   if (typeof options.transformCgi === 'function') return options.transformCgi(url)
-  const urlObj = typeof url === 'object' ? url : getUrlFullInfo(url, options)
+  const urlObj = typeof url === 'object' ? url : getUrlFullInfo(url, true, options)
   // not url
   if (!urlObj) return url
   // extra

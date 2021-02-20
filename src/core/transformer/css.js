@@ -20,18 +20,17 @@ class CssTransformer extends Transformer {
       if (!res) return
       transformList.push({
         node,
-        url: res.url,
+        href: res.href,
         origin: res.origin
       })
     })
 
     return Promise
-      .all(transformList.map(({ url }) => getParseBase64Promise(url)))
+      .all(transformList.map(({ href }) => getParseBase64Promise(href)))
       .then((values) => {
         values.forEach((v, i) => v && (transformList[i].node.value = transformList[i].node.value.replace(transformList[i].origin, v)))
 
-
-        const result = postcss().process(this.root, loaderUtils.getOptions(this.loader))
+        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader))
 
         result.meta = {
           ast: {
