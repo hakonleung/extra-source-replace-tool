@@ -3,6 +3,11 @@ const path = require('path')
 const plugins = require('./plugins')
 const modules = require('./modules')
 const { OUTPUT_PATH } = require('./constant')
+const core = require('../../src/core')
+
+core.config({
+  // requestTimeout: 50
+}, true)
 
 const obeserver = {}
 Object.defineProperty(obeserver, 'outputPath', {

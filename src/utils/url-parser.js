@@ -134,6 +134,8 @@ const transformCgi = (url, options = {}) => {
   } else if (typeof url === 'string') {
     urlObj = getUrlFullInfo(url, true, options)
   } else {
+    console.error(`esrt transformCgi error! ${typeof url}`)
+    console.error(url)
     throw new Error('url`s type must be object or string!')
   }
   // not url

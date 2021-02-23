@@ -37,18 +37,18 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
         onEnd()
       })
     })
-    req.on('timeout', () => {
-      console.log('esrt request timeout!')
+    const onError = (err) => {
+      console.error(`esrt request error!`)
+      console.error(`origin: ${url}`)
+      console.error(`target: ${fullInfo.href}`)
+      console.error(err)
       req.abort()
       resolve()
-    })
-    req.on('error', (err) => {
-      console.log('esrt request error!', err)
-      resolve()
-    })
+    }
+    req.on('timeout', onError)
+    req.on('error', onError)
   } catch (err) {
-    console.log('esrt request error!', err)
-    resolve()
+    onError(err)
   }
 })
 
