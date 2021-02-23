@@ -17,12 +17,18 @@ const core = __webpack_require__(1)
 const cssLoader = __webpack_require__(2)
 const tsLoader = __webpack_require__(15)
 const HtmlPlugin = __webpack_require__(19)
+const CssTransformer = __webpack_require__(6)
+const TsTransformer = __webpack_require__(16)
+const HtmlTransformer = __webpack_require__(21)
 
 module.exports = {
   core,
   cssLoader,
   tsLoader,
-  HtmlPlugin
+  HtmlPlugin,
+  CssTransformer,
+  TsTransformer,
+  HtmlTransformer,
 }
 
 /***/ }),
@@ -244,11 +250,20 @@ const isIgnoreFile = (source, map, filename) => {
   return leadingComment && /@local-ignore/.test(leadingComment[0])
 }
 
+const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
+  try {
+    return ts.createPrinter().printNode(hint, node, sourceFile)
+  } catch (err) {
+    debugger
+  }
+}
+
 module.exports = {
   stringPlusToTemplateExpression,
   isAccessValid,
   getAccess,
-  isIgnoreFile
+  isIgnoreFile,
+  printNode
 }
 
 /***/ }),
@@ -294,7 +309,7 @@ class CssTransformer extends Transformer {
       .then((values) => {
         values.forEach((v, i) => v && (transformList[i].node.value = transformList[i].node.value.replace(transformList[i].origin, v)))
 
-        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader))
+        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader) || undefined)
 
         result.meta = {
           ast: {
@@ -353,18 +368,22 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   }
   // use cache
   if (data) onEnd()
-  FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
-    const chunks = []
-    res.on('data', (chunk) => {
-      chunks.push(chunk)
+  try {
+    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
+      const chunks = []
+      res.on('data', (chunk) => {
+        chunks.push(chunk)
+      })
+      res.on('end', (err) => {
+        if (err) reject(err)
+        data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
+        sourceCache.set(fullInfo.href, data)
+        onEnd()
+      })
     })
-    res.on('end', (err) => {
-      if (err) reject(err)
-      data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
-      sourceCache.set(fullInfo.href, data)
-      onEnd()
-    })
-  })
+  } catch (err) {
+    resolve()
+  }
 })
 
 const getParseBase64Promise = (url) => httpGet(url, (data, promise) => {
@@ -529,7 +548,14 @@ const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !
 const transformCgi = (url, options = {}) => {
   // use options
   if (typeof options.transformCgi === 'function') return options.transformCgi(url)
-  const urlObj = typeof url === 'object' ? url : getUrlFullInfo(url, true, options)
+  let urlObj = url
+  if (typeof url === 'object') {
+    url = url.href || ''
+  } else if (typeof url === 'string') {
+    urlObj = getUrlFullInfo(url, true, options)
+  } else {
+    throw new Error('url`s type must be object or string!')
+  }
   // not url
   if (!urlObj) return url
   // extra
@@ -610,6 +636,7 @@ const {
   getParseBase64Promise,
   getParseJsPromise
 } = __webpack_require__(9)
+const { printNode } = __webpack_require__(4)
 const Transformer = __webpack_require__(13)
 const core = __webpack_require__(1)
 
@@ -642,7 +669,7 @@ class TsTransformer extends Transformer {
               }
               return newNode && {
                 ...cs,
-                target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+                target: printNode(newNode, changeset.sourceFile)
               }
             })
         }
@@ -671,7 +698,7 @@ class TsTransformer extends Transformer {
       }
       return Promise.resolve({
         ...cs,
-        target: ts.createPrinter().printNode(ts.EmitHint.Unspecified, newNode, changeset.sourceFile)
+        target: printNode(newNode, changeset.sourceFile)
       })
     }
     const promises = changeset.value.map((cs) => genNewCodePromise(cs, cs.access instanceof Array))
@@ -697,7 +724,8 @@ const ts = __webpack_require__(5)
 const { getUrlFullInfo, execStyleUrl } = __webpack_require__(12)
 const {
   stringPlusToTemplateExpression,
-  getAccess
+  getAccess,
+  printNode
 } = __webpack_require__(4)
 const Changeset = __webpack_require__(18)
 const core = __webpack_require__(1)
@@ -751,15 +779,9 @@ function isIgnoreNode(node, sourceFile) {
     return IgnoreType.Import
   }
   // ignore console
-  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
-    (
-      /^console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^window.console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^__console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^window.__console\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      /^window.__log\./.test(ts.createPrinter().printNode(ts.EmitHint.Unspecified, node.expression, sourceFile).trim()) ||
-      false
-    )) {
+  if (ts.isCallExpression(node)
+    && ts.isPropertyAccessExpression(node.expression)
+    && /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())) {
     return IgnoreType.Console
   }
   // type definition
@@ -791,7 +813,7 @@ class TsProcessor {
     // if (this.sourceFile.fileName.indexOf('test') !== -1) {
     //   debugger
     // }
-    
+
     const changeset = new Changeset(this.sourceFile)
     const nodeVisitor = (node) => {
       if (ts.isJsxAttribute(node)) {
@@ -810,25 +832,25 @@ class TsProcessor {
         this.jsxAttribute = null
       }
     }
-    
+
     ts[onlyChild ? 'forEachChild' : 'visitNode'](root, nodeVisitor)
     return changeset
   }
 
   process(node) {
     let result = null
-    ;[
-      this.expressionProc,
-      this.stringPlusProc,
-      this.stringProc,
-    ].some(proc => result = proc.call(this, node))
+      ;[
+        this.expressionProc,
+        this.stringPlusProc,
+        this.stringProc,
+      ].some(proc => result = proc.call(this, node))
 
     if (result) {
       if (result.start === undefined) {
         result.start = result.node.pos
         result.end = result.node.end
       }
-      result.code = ts.createPrinter().printNode(ts.EmitHint.Unspecified, result.node, this.sourceFile)
+      result.code = printNode(result.node, this.sourceFile)
     }
 
     return result
@@ -870,7 +892,7 @@ class TsProcessor {
     const isCallExpression = ts.isCallExpression(node)
     let accessEntry
     let argsEntry
-    
+
     if (isBinaryExpression || isCallExpression) {
       if (isBinaryExpression) {
         accessEntry = 'left'
