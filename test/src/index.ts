@@ -18,4 +18,5 @@ window.addEventListener('load', () => {
   document.body.append(div)
   ReactDom.render(JSX, div)
   document.querySelector('#exception-other')
+  const url = `wss://window.location.host`;
 })

@@ -10,7 +10,7 @@
     "test:prod": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index",
     "inject:dev": "NODE_ENV=development node --trace-deprecation src/inject",
     "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject",
-    "commit": "git add . && git commit -m 'feat: t' && git push remote master && git push origin master && tnpm version patch && tnpm publish"
+    "commit": "yarn build && git add . && git commit -m 'feat: t' && git push remote master && git push origin master && tnpm version patch && tnpm publish"
   },
   "dependencies": {
     "core-js": "^3.9.0",

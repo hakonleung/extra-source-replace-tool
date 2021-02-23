@@ -42,7 +42,12 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
       req.abort()
       resolve()
     })
+    req.on('error', (err) => {
+      console.log('esrt request error!', err)
+      resolve()
+    })
   } catch (err) {
+    console.log('esrt request error!', err)
     resolve()
   }
 })
