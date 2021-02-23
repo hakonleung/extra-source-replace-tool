@@ -81,7 +81,9 @@ const parseUrl = (str, options = {}) => {
   return execUrlNormalize(res, options)
 }
 
+const FULL_INFO_CACHE = {}
 const getUrlFullInfo = (str, incomplete, options = {}) => {
+  if (!incomplete && FULL_INFO_CACHE[str] !== undefined) return FULL_INFO_CACHE[str]
   const location = parseUrl(str, options)
   if (!location || !location.host && !location.pathname) return null
   location.ext = ''
@@ -92,6 +94,7 @@ const getUrlFullInfo = (str, incomplete, options = {}) => {
   if (!incomplete) {
     const ext = /\.([0-0a-z]+)$/i.exec(location.pathname)
     if (ext) location.ext = ext[1]
+    FULL_INFO_CACHE[str] = location
   }
   return location
 }

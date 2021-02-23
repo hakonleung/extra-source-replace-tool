@@ -23,7 +23,9 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   // use cache
   if (data) return onEnd()
   try {
-    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
+    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
+      timeout: core.options.requestTimeout
+    }, (res) => {
       const chunks = []
       res.on('data', (chunk) => {
         chunks.push(chunk)

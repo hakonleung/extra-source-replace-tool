@@ -4,7 +4,7 @@ const DEFAULT_OPTIONS = {
   context: process.cwd(),
   global: 'window',
   globalAlias: ['windowAsAny', 'global'],
-  origins: ['https://doc.weixin.qq.com'],
+  origins: [],
   validBinaryAccesses: [
     ['window', 'location'],
     ['window', 'location', 'href'],
@@ -15,33 +15,60 @@ const DEFAULT_OPTIONS = {
   ],
   transformCgi: null,
   blockExtraUrl: true,
-  blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+  blockPaths: [],
   blockIntraUrl: false,
-  l1PathMap: {
-    doc: '/cgi-bin/doc',
-    wedoc: '/cgi-bin/doc',
-    txdoc: '/cgi-bin/doc',
-    comment: '/cgi-bin/doc',
-    disk: '/cgi-bin/disk'
-  },
-  l2PathMap: {
-    getinfo: 'get_info'
-  },
-  injectBlockMethod: true,
+  l1PathMap: {},
+  l2PathMap: {},
+  injectBlockMethod: false,
+  requestTimeout: 500
 }
-const core = {}
 
-let _options = DEFAULT_OPTIONS
-Object.defineProperty(core, 'options', {
-  get() {
-    return _options
-  },
-  set(opts) {
-    _options = {
+const DEFAULT_OPTION_MAP = {
+  WEFE: {
+    origins: ['https://doc.weixin.qq.com'],
+    blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+    l1PathMap: {
+      doc: '/cgi-bin/doc',
+      wedoc: '/cgi-bin/doc',
+      txdoc: '/cgi-bin/doc',
+      comment: '/cgi-bin/doc',
+      disk: '/cgi-bin/disk'
+    },
+    l2PathMap: {
+      getinfo: 'get_info'
+    },
+    injectBlockMethod: true,
+  }
+}
+
+const core = {
+  options: DEFAULT_OPTIONS
+}
+
+// let _options = DEFAULT_OPTIONS
+// Object.defineProperty(core, 'options', {
+//   get() {
+//     return _options
+//   },
+//   set(opts) {
+//     _options = {
+//       ...DEFAULT_OPTIONS,
+//       ...opts
+//     }
+//   }
+// })
+
+core.config = (options, reset, type = 'WEFE') => {
+  if (reset) {
+    core.options = {
       ...DEFAULT_OPTIONS,
-      ...opts
+      ...(type && DEFAULT_OPTION_MAP[type] ? DEFAULT_OPTION_MAP[type] : {}),
     }
   }
-})
+  core.options = {
+    ...core.options,
+    ...options
+  }
+}
 
 module.exports = core
