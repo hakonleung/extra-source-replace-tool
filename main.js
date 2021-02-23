@@ -41,7 +41,7 @@ const DEFAULT_OPTIONS = {
   context: process.cwd(),
   global: 'window',
   globalAlias: ['windowAsAny', 'global'],
-  origins: ['https://doc.weixin.qq.com'],
+  origins: [],
   validBinaryAccesses: [
     ['window', 'location'],
     ['window', 'location', 'href'],
@@ -52,34 +52,61 @@ const DEFAULT_OPTIONS = {
   ],
   transformCgi: null,
   blockExtraUrl: true,
-  blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+  blockPaths: [],
   blockIntraUrl: false,
-  l1PathMap: {
-    doc: '/cgi-bin/doc',
-    wedoc: '/cgi-bin/doc',
-    txdoc: '/cgi-bin/doc',
-    comment: '/cgi-bin/doc',
-    disk: '/cgi-bin/disk'
-  },
-  l2PathMap: {
-    getinfo: 'get_info'
-  },
-  injectBlockMethod: true,
+  l1PathMap: {},
+  l2PathMap: {},
+  injectBlockMethod: false,
+  requestTimeout: 500
 }
-const core = {}
 
-let _options = DEFAULT_OPTIONS
-Object.defineProperty(core, 'options', {
-  get() {
-    return _options
-  },
-  set(opts) {
-    _options = {
+const DEFAULT_OPTION_MAP = {
+  WEFE: {
+    origins: ['https://doc.weixin.qq.com'],
+    blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+    l1PathMap: {
+      doc: '/cgi-bin/doc',
+      wedoc: '/cgi-bin/doc',
+      txdoc: '/cgi-bin/doc',
+      comment: '/cgi-bin/doc',
+      disk: '/cgi-bin/disk'
+    },
+    l2PathMap: {
+      getinfo: 'get_info'
+    },
+    injectBlockMethod: true,
+  }
+}
+
+const core = {
+  options: DEFAULT_OPTIONS
+}
+
+// let _options = DEFAULT_OPTIONS
+// Object.defineProperty(core, 'options', {
+//   get() {
+//     return _options
+//   },
+//   set(opts) {
+//     _options = {
+//       ...DEFAULT_OPTIONS,
+//       ...opts
+//     }
+//   }
+// })
+
+core.config = (options, reset, type = 'WEFE') => {
+  if (reset) {
+    core.options = {
       ...DEFAULT_OPTIONS,
-      ...opts
+      ...(type && DEFAULT_OPTION_MAP[type] ? DEFAULT_OPTION_MAP[type] : {}),
     }
   }
-})
+  core.options = {
+    ...core.options,
+    ...options
+  }
+}
 
 module.exports = core
 
@@ -369,7 +396,9 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   // use cache
   if (data) return onEnd()
   try {
-    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
+    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
+      timeout: core.options.requestTimeout
+    }, (res) => {
       const chunks = []
       res.on('data', (chunk) => {
         chunks.push(chunk)
@@ -504,9 +533,11 @@ const parseUrl = (str, options = {}) => {
   return execUrlNormalize(res, options)
 }
 
+const FULL_INFO_CACHE = {}
 const getUrlFullInfo = (str, incomplete, options = {}) => {
+  if (!incomplete && FULL_INFO_CACHE[str] !== undefined) return FULL_INFO_CACHE[str]
   const location = parseUrl(str, options)
-  if (!location) return null
+  if (!location || !location.host && !location.pathname) return null
   location.ext = ''
   if (!location.host && location.pathname || options.origins && options.origins.includes(location.origin)) {
     location.inside = true
@@ -515,6 +546,7 @@ const getUrlFullInfo = (str, incomplete, options = {}) => {
   if (!incomplete) {
     const ext = /\.([0-0a-z]+)$/i.exec(location.pathname)
     if (ext) location.ext = ext[1]
+    FULL_INFO_CACHE[str] = location
   }
   return location
 }
