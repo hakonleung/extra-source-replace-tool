@@ -17,4 +17,5 @@ window.addEventListener('load', () => {
   const div = document.createElement('div')
   document.body.append(div)
   ReactDom.render(JSX, div)
+  document.querySelector('#exception-other')
 })

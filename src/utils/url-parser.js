@@ -83,7 +83,7 @@ const parseUrl = (str, options = {}) => {
 
 const getUrlFullInfo = (str, incomplete, options = {}) => {
   const location = parseUrl(str, options)
-  if (!location) return null
+  if (!location || !location.host && !location.pathname) return null
   location.ext = ''
   if (!location.host && location.pathname || options.origins && options.origins.includes(location.origin)) {
     location.inside = true
