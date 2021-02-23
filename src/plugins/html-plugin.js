@@ -5,7 +5,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = require('../core/transformer/html')
 
-class HtmlLinkTransformPlugin {
+class HtmlPlugin {
   apply(compiler) {
     compiler.hooks.compilation.tap('HtmlLinkTransformPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
@@ -19,4 +19,4 @@ class HtmlLinkTransformPlugin {
   }
 }
 
-module.exports = HtmlLinkTransformPlugin
+module.exports = HtmlPlugin
