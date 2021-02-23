@@ -359,7 +359,7 @@ const FETCH_PROTOCOL = {
 const httpGet = (url, cb) => new Promise((resolve, reject) => {
   const fullInfo = getUrlFullInfo(url, false, core.options)
   if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
-    resolve()
+    return resolve()
   }
   let data = sourceCache.get(fullInfo.href)
   const onEnd = () => {
@@ -367,7 +367,7 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
     resolve(data)
   }
   // use cache
-  if (data) onEnd()
+  if (data) return onEnd()
   try {
     FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, (res) => {
       const chunks = []
@@ -375,7 +375,7 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
         chunks.push(chunk)
       })
       res.on('end', (err) => {
-        if (err) reject(err)
+        if (err) return reject(err)
         data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
         sourceCache.set(fullInfo.href, data)
         onEnd()
@@ -984,7 +984,7 @@ const HtmlWebpackPlugin = __webpack_require__(20)
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = __webpack_require__(21)
 
-class HtmlLinkTransformPlugin {
+class HtmlPlugin {
   apply(compiler) {
     compiler.hooks.compilation.tap('HtmlLinkTransformPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
@@ -998,7 +998,7 @@ class HtmlLinkTransformPlugin {
   }
 }
 
-module.exports = HtmlLinkTransformPlugin
+module.exports = HtmlPlugin
 
 
 /***/ }),
