@@ -23,7 +23,7 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   // use cache
   if (data) return onEnd()
   try {
-    FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
+    const req = FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
       timeout: core.options.requestTimeout
     }, (res) => {
       const chunks = []
@@ -36,6 +36,11 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
         sourceCache.set(fullInfo.href, data)
         onEnd()
       })
+    })
+    req.on('timeout', () => {
+      console.log('esrt request timeout!')
+      req.abort()
+      resolve()
     })
   } catch (err) {
     resolve()
