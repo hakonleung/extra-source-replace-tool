@@ -19,6 +19,7 @@ window.addEventListener('load', () => {
   ReactDom.render(JSX, div)
   document.querySelector('#exception-other')
   const url = `wss://window.location.host`;
-  const tencentDocOpenUrl = (url: string, type: string) => {};
+  const tencentDocOpenUrl = (url: string, type: string) => { };
   tencentDocOpenUrl('http://finance.qq.com/products/portfolio/download.htm', '_blank');
+  if (a === 'constructor') {}
 })
