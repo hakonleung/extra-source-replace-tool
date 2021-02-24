@@ -10,9 +10,13 @@ const FETCH_PROTOCOL = {
   https
 }
 
+const isSupportExt = (ext) => {
+  return ext && !/^(html?|exe|apk)$/i.test(ext)
+}
+
 const httpGet = (url, cb) => new Promise((resolve, reject) => {
   const fullInfo = getUrlFullInfo(url, false, core.options)
-  if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
+  if (!fullInfo || fullInfo.inside || !isSupportExt(fullInfo.ext) || !FETCH_PROTOCOL[fullInfo.protocol]) {
     return resolve()
   }
   let data = sourceCache.get(fullInfo.href)

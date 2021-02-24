@@ -42,14 +42,16 @@ const DEFAULT_OPTIONS = {
   global: 'window',
   globalAlias: ['windowAsAny', 'global'],
   origins: [],
-  validBinaryAccesses: [
+  matchBinaryAccesses: [
     ['window', 'location'],
     ['window', 'location', 'href'],
   ],
-  validCallAccesses: [
+  matchCallAccesses: [
     ['window', 'open'],
     ['window', 'location', 'replace'],
   ],
+  ignoreBinaryAccesses: [],
+  ignoreCallAccesses: [],
   transformCgi: null,
   blockExtraUrl: true,
   blockPaths: [],
@@ -57,7 +59,7 @@ const DEFAULT_OPTIONS = {
   l1PathMap: {},
   l2PathMap: {},
   injectBlockMethod: false,
-  requestTimeout: 500
+  requestTimeout: 3000
 }
 
 const DEFAULT_OPTION_MAP = {
@@ -75,6 +77,10 @@ const DEFAULT_OPTION_MAP = {
       getinfo: 'get_info'
     },
     injectBlockMethod: true,
+    ignoreBinaryAccesses: [],
+    ignoreCallAccesses: [
+      ['tencentDocOpenUrl']
+    ],
   }
 }
 
@@ -228,9 +234,8 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const isAccessValid = (access, isCallExpression) => {
-  const { global, globalAlias, validBinaryAccesses, validCallAccesses } = core.options
-  const validAccesses = isCallExpression ? validCallAccesses : validBinaryAccesses
+const isAccessValid = (access, validAccesses) => {
+  const { global, globalAlias } = core.options
   return access && access.length > 0 && validAccesses.some(validAccess => {
     let validStart = 0
     let accessStart = 0
@@ -246,7 +251,17 @@ const isAccessValid = (access, isCallExpression) => {
   })
 }
 
-const getAccess = (node, verify, isCallExpression) => {
+const isAccessMatch = (access, isCallExpression) => {
+  const { matchBinaryAccesses, matchCallAccesses } = core.options
+  return isAccessValid(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
+}
+
+const isAccessIgnore = (access, isCallExpression) => {
+  const { ignoreBinaryAccesses, ignoreCallAccesses } = core.options
+  return isAccessValid(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
+}
+
+const getAccess = (node) => {
   // get property access
   const access = []
   while (node) {
@@ -266,7 +281,7 @@ const getAccess = (node, verify, isCallExpression) => {
     }
     node = node.expression
   }
-  return !verify || isAccessValid(access, isCallExpression) ? access : []
+  return access
 }
 
 const isIgnoreFile = (source, map, filename) => {
@@ -287,7 +302,8 @@ const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
 
 module.exports = {
   stringPlusToTemplateExpression,
-  isAccessValid,
+  isAccessMatch,
+  isAccessIgnore,
   getAccess,
   isIgnoreFile,
   printNode
@@ -383,9 +399,13 @@ const FETCH_PROTOCOL = {
   https
 }
 
+const isSupportExt = (ext) => {
+  return ext && !/^(html?|exe|apk)$/i.test(ext)
+}
+
 const httpGet = (url, cb) => new Promise((resolve, reject) => {
   const fullInfo = getUrlFullInfo(url, false, core.options)
-  if (!fullInfo || fullInfo.inside || !FETCH_PROTOCOL[fullInfo.protocol]) {
+  if (!fullInfo || fullInfo.inside || !isSupportExt(fullInfo.ext) || !FETCH_PROTOCOL[fullInfo.protocol]) {
     return resolve()
   }
   let data = sourceCache.get(fullInfo.href)
@@ -769,6 +789,8 @@ const { getUrlFullInfo, execStyleUrl } = __webpack_require__(12)
 const {
   stringPlusToTemplateExpression,
   getAccess,
+  isAccessMatch,
+  isAccessIgnore,
   printNode
 } = __webpack_require__(4)
 const Changeset = __webpack_require__(18)
@@ -867,7 +889,9 @@ class TsProcessor {
 
       const result = this.process(node)
       if (result) {
-        changeset.add(result)
+        if (!result.ignore) {
+          changeset.add(result)
+        }
         return
       }
 
@@ -889,7 +913,7 @@ class TsProcessor {
         this.stringProc,
       ].some(proc => result = proc.call(this, node))
 
-    if (result) {
+    if (result && !result.ignore) {
       if (result.start === undefined) {
         result.start = result.node.pos
         result.end = result.node.end
@@ -945,8 +969,9 @@ class TsProcessor {
         accessEntry = 'expression'
         argsEntry = 'arguments'
       }
-      const access = getAccess(node[accessEntry], true, isCallExpression)
-      if (!access.length) return null
+      const access = getAccess(node[accessEntry])
+      if (isAccessIgnore(access, isCallExpression)) return { ignore: true }
+      if (!isAccessMatch(access, isCallExpression)) return null
       const child = (node[argsEntry] instanceof Array ? node[argsEntry] : [node[argsEntry]]).map(v => this.getChangeset(v))
       if (child.length) {
         return { node, access, child }

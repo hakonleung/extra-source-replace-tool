@@ -73,9 +73,8 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const isAccessValid = (access, isCallExpression) => {
-  const { global, globalAlias, validBinaryAccesses, validCallAccesses } = core.options
-  const validAccesses = isCallExpression ? validCallAccesses : validBinaryAccesses
+const isAccessValid = (access, validAccesses) => {
+  const { global, globalAlias } = core.options
   return access && access.length > 0 && validAccesses.some(validAccess => {
     let validStart = 0
     let accessStart = 0
@@ -91,7 +90,17 @@ const isAccessValid = (access, isCallExpression) => {
   })
 }
 
-const getAccess = (node, verify, isCallExpression) => {
+const isAccessMatch = (access, isCallExpression) => {
+  const { matchBinaryAccesses, matchCallAccesses } = core.options
+  return isAccessValid(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
+}
+
+const isAccessIgnore = (access, isCallExpression) => {
+  const { ignoreBinaryAccesses, ignoreCallAccesses } = core.options
+  return isAccessValid(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
+}
+
+const getAccess = (node) => {
   // get property access
   const access = []
   while (node) {
@@ -111,7 +120,7 @@ const getAccess = (node, verify, isCallExpression) => {
     }
     node = node.expression
   }
-  return !verify || isAccessValid(access, isCallExpression) ? access : []
+  return access
 }
 
 const isIgnoreFile = (source, map, filename) => {
@@ -132,7 +141,8 @@ const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
 
 module.exports = {
   stringPlusToTemplateExpression,
-  isAccessValid,
+  isAccessMatch,
+  isAccessIgnore,
   getAccess,
   isIgnoreFile,
   printNode

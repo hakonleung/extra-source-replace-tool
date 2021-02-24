@@ -3,6 +3,8 @@ const { getUrlFullInfo, execStyleUrl } = require('../../utils/url-parser')
 const {
   stringPlusToTemplateExpression,
   getAccess,
+  isAccessMatch,
+  isAccessIgnore,
   printNode
 } = require('../../utils/ast')
 const Changeset = require('../changeset')
@@ -101,7 +103,9 @@ class TsProcessor {
 
       const result = this.process(node)
       if (result) {
-        changeset.add(result)
+        if (!result.ignore) {
+          changeset.add(result)
+        }
         return
       }
 
@@ -123,7 +127,7 @@ class TsProcessor {
         this.stringProc,
       ].some(proc => result = proc.call(this, node))
 
-    if (result) {
+    if (result && !result.ignore) {
       if (result.start === undefined) {
         result.start = result.node.pos
         result.end = result.node.end
@@ -179,8 +183,9 @@ class TsProcessor {
         accessEntry = 'expression'
         argsEntry = 'arguments'
       }
-      const access = getAccess(node[accessEntry], true, isCallExpression)
-      if (!access.length) return null
+      const access = getAccess(node[accessEntry])
+      if (isAccessIgnore(access, isCallExpression)) return { ignore: true }
+      if (!isAccessMatch(access, isCallExpression)) return null
       const child = (node[argsEntry] instanceof Array ? node[argsEntry] : [node[argsEntry]]).map(v => this.getChangeset(v))
       if (child.length) {
         return { node, access, child }

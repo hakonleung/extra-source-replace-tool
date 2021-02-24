@@ -5,14 +5,16 @@ const DEFAULT_OPTIONS = {
   global: 'window',
   globalAlias: ['windowAsAny', 'global'],
   origins: [],
-  validBinaryAccesses: [
+  matchBinaryAccesses: [
     ['window', 'location'],
     ['window', 'location', 'href'],
   ],
-  validCallAccesses: [
+  matchCallAccesses: [
     ['window', 'open'],
     ['window', 'location', 'replace'],
   ],
+  ignoreBinaryAccesses: [],
+  ignoreCallAccesses: [],
   transformCgi: null,
   blockExtraUrl: true,
   blockPaths: [],
@@ -20,7 +22,7 @@ const DEFAULT_OPTIONS = {
   l1PathMap: {},
   l2PathMap: {},
   injectBlockMethod: false,
-  requestTimeout: 500
+  requestTimeout: 3000
 }
 
 const DEFAULT_OPTION_MAP = {
@@ -38,6 +40,10 @@ const DEFAULT_OPTION_MAP = {
       getinfo: 'get_info'
     },
     injectBlockMethod: true,
+    ignoreBinaryAccesses: [],
+    ignoreCallAccesses: [
+      ['tencentDocOpenUrl']
+    ],
   }
 }
 
