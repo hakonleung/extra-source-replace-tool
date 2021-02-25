@@ -22,7 +22,8 @@ const DEFAULT_OPTIONS = {
   l1PathMap: {},
   l2PathMap: {},
   injectBlockMethod: false,
-  requestTimeout: 3000
+  requestTimeout: 3000,
+  requestRetryTimes: 3
 }
 
 const DEFAULT_OPTION_MAP = {

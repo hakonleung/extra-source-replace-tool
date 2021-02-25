@@ -5,6 +5,7 @@ const {
   getParseBase64Promise,
   getParseJsPromise
 } = require('../../utils/http')
+const logger = require('../../utils/logger')
 const {
   testUrl,
   parseStyleUrl,
@@ -46,8 +47,8 @@ class HtmlTransformer extends Transformer {
       try {
         const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
         HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
-      } catch {
-        debugger
+      } catch (err) {
+        logger.error('html inject', err)
       }
     }
     return HtmlTransformer.injectJsCache || null
@@ -116,21 +117,32 @@ class HtmlTransformer extends Transformer {
       const extractResult = execStyleUrl(node.attribs[attr], true)
       return Promise
         .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
-        .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
+        .then(res => res.forEach((v, i) => {
+          if (!v) return
+          const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
+          logger.info('html styleAttr => styleAttr', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          node.attribs[attr] = newCode
+        }))
     } else if (attr) {
       if (attr === 'src' && node.name === 'script') {
         // js src
         return getParseJsPromise(node.attribs[attr]).then(v => {
-          delete node.attribs[attr]
+          logger.info('html script.src => script.text', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
+          delete node.attribs[attr]
         })
       } else {
         // other link
-        return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
+        return getParseBase64Promise(node.attribs[attr]).then(v => {
+          if (!v) return
+          logger.info('html link => link', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
+          node.attribs[attr] = v
+        })
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
+      logger.info('html', node.name, '⇩⇩⇩⇩')
       return new transformer({ code: text })
         .transformAsync()
         .then(res => {
@@ -145,7 +157,7 @@ class HtmlTransformer extends Transformer {
     return Promise.all(items)
       .then(() => domSerializer.default(this.root))
       .catch(err => {
-        console.log(err)
+        logger.error('html', err)
       })
   }
 }

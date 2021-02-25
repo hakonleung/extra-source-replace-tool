@@ -1,6 +1,7 @@
 const postcss = require('postcss')
 const loaderUtils = require('loader-utils')
 const { getParseBase64Promise } = require('../../utils/http')
+const logger = require('../../utils/logger')
 const { parseStyleUrl } = require('../../utils/url-parser')
 const Transformer = require('.')
 
@@ -28,7 +29,12 @@ class CssTransformer extends Transformer {
     return Promise
       .all(transformList.map(({ href }) => getParseBase64Promise(href)))
       .then((values) => {
-        values.forEach((v, i) => v && (transformList[i].node.value = transformList[i].node.value.replace(transformList[i].origin, v)))
+        values.forEach((v, i) => {
+          if (!v) return
+          const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
+          logger.info('css', `from: ${transformList[i].node.value.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          transformList[i].node.value = newCode
+        })
 
         const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader) || undefined)
 

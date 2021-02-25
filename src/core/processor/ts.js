@@ -121,9 +121,9 @@ class TsProcessor {
     if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
       text = expr.text
       if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(expr.parent) || cssDetect(text)) {
-        if (location = execStyleUrl(text, true)) {
-          cs = { node: expr, text, locations: location }
-        }
+        const locations = execStyleUrl(text, true)
+        if (!locations.length) return
+        cs = { node: expr, text, locations }
       }
     } else if (ts.isTemplateExpression(expr)) {
       text = expr.head.text

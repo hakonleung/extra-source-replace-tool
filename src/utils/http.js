@@ -2,6 +2,7 @@ const http = require('http')
 const https = require('https')
 const { getUrlFullInfo } = require('./url-parser')
 const core = require('../core')
+const logger = require('./logger')
 
 const sourceCache = new Map()
 
@@ -26,7 +27,19 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   }
   // use cache
   if (data) return onEnd()
-  try {
+  logger.info(fullInfo.protocol, `from: ${url}`, `to: ${fullInfo.href}`)
+  let retryTimes = 0
+  const getErrorCallback = (req) => (err) => {
+    logger.error(fullInfo.protocol, `retryTimes: ${retryTimes}`)
+    logger.error(fullInfo.protocol, err)
+    req && req.abort()
+    if ((retryTimes += 1) <= core.options.requestRetryTimes) {
+      fetch()
+    } else {
+      resolve()
+    }
+  }
+  const fetch = () => {
     const req = FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
       timeout: core.options.requestTimeout
     }, (res) => {
@@ -35,25 +48,17 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
         chunks.push(chunk)
       })
       res.on('end', (err) => {
-        if (err) return reject(err)
+        if (err) return onError(err)
         data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
         sourceCache.set(fullInfo.href, data)
         onEnd()
       })
     })
-    const onError = (err) => {
-      console.error(`esrt request error!`)
-      console.error(`origin: ${url}`)
-      console.error(`target: ${fullInfo.href}`)
-      console.error(err)
-      req.abort()
-      resolve()
-    }
-    req.on('timeout', onError)
-    req.on('error', onError)
-  } catch (err) {
-    onError(err)
+    req.on('timeout', () => req.abort())
+    req.on('error', getErrorCallback(req))
   }
+
+  fetch()
 })
 
 const getParseBase64Promise = (url) => httpGet(url, (data, promise) => {

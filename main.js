@@ -15,11 +15,11 @@ return /******/ (() => { // webpackBootstrap
 
 const core = __webpack_require__(1)
 const cssLoader = __webpack_require__(2)
-const tsLoader = __webpack_require__(15)
-const HtmlPlugin = __webpack_require__(19)
+const tsLoader = __webpack_require__(18)
+const HtmlPlugin = __webpack_require__(22)
 const CssTransformer = __webpack_require__(6)
-const TsTransformer = __webpack_require__(16)
-const HtmlTransformer = __webpack_require__(21)
+const TsTransformer = __webpack_require__(19)
+const HtmlTransformer = __webpack_require__(24)
 
 module.exports = {
   core,
@@ -59,7 +59,8 @@ const DEFAULT_OPTIONS = {
   l1PathMap: {},
   l2PathMap: {},
   injectBlockMethod: false,
-  requestTimeout: 3000
+  requestTimeout: 3000,
+  requestRetryTimes: 3
 }
 
 const DEFAULT_OPTION_MAP = {
@@ -323,8 +324,9 @@ module.exports = require("typescript");;
 const postcss = __webpack_require__(7)
 const loaderUtils = __webpack_require__(8)
 const { getParseBase64Promise } = __webpack_require__(9)
+const logger = __webpack_require__(13)
 const { parseStyleUrl } = __webpack_require__(12)
-const Transformer = __webpack_require__(13)
+const Transformer = __webpack_require__(17)
 
 class CssTransformer extends Transformer {
   init() {
@@ -350,7 +352,12 @@ class CssTransformer extends Transformer {
     return Promise
       .all(transformList.map(({ href }) => getParseBase64Promise(href)))
       .then((values) => {
-        values.forEach((v, i) => v && (transformList[i].node.value = transformList[i].node.value.replace(transformList[i].origin, v)))
+        values.forEach((v, i) => {
+          if (!v) return
+          const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
+          logger.info('css', `from: ${transformList[i].node.value.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          transformList[i].node.value = newCode
+        })
 
         const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader) || undefined)
 
@@ -391,6 +398,7 @@ const http = __webpack_require__(10)
 const https = __webpack_require__(11)
 const { getUrlFullInfo } = __webpack_require__(12)
 const core = __webpack_require__(1)
+const logger = __webpack_require__(13)
 
 const sourceCache = new Map()
 
@@ -415,7 +423,19 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   }
   // use cache
   if (data) return onEnd()
-  try {
+  logger.info(fullInfo.protocol, `from: ${url}`, `to: ${fullInfo.href}`)
+  let retryTimes = 0
+  const getErrorCallback = (req) => (err) => {
+    logger.error(fullInfo.protocol, `retryTimes: ${retryTimes}`)
+    logger.error(fullInfo.protocol, err)
+    req && req.abort()
+    if ((retryTimes += 1) <= core.options.requestRetryTimes) {
+      fetch()
+    } else {
+      resolve()
+    }
+  }
+  const fetch = () => {
     const req = FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
       timeout: core.options.requestTimeout
     }, (res) => {
@@ -424,25 +444,17 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
         chunks.push(chunk)
       })
       res.on('end', (err) => {
-        if (err) return reject(err)
+        if (err) return onError(err)
         data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
         sourceCache.set(fullInfo.href, data)
         onEnd()
       })
     })
-    const onError = (err) => {
-      console.error(`esrt request error!`)
-      console.error(`origin: ${url}`)
-      console.error(`target: ${fullInfo.href}`)
-      console.error(err)
-      req.abort()
-      resolve()
-    }
-    req.on('timeout', onError)
-    req.on('error', onError)
-  } catch (err) {
-    onError(err)
+    req.on('timeout', () => req.abort())
+    req.on('error', getErrorCallback(req))
   }
+
+  fetch()
 })
 
 const getParseBase64Promise = (url) => httpGet(url, (data, promise) => {
@@ -652,6 +664,81 @@ module.exports = {
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const path = __webpack_require__(14)
+const fs = __webpack_require__(15)
+const winston = __webpack_require__(16)
+
+const filename = path.resolve(process.cwd(), 'esrt.log')
+if (fs.existsSync(filename)) fs.unlinkSync(filename)
+
+winston.addColors({
+  error: 'red',
+  warn: 'yellow',
+  info: 'cyan',
+  debug: 'green'
+})
+
+const logger = winston.createLogger({
+  format: winston.format.simple(),
+  transports: [
+    new winston.transports.Console({
+      colorize: true,
+      prettyPrint: true,
+      timestamp() {
+        return new Date().toLocaleTimeString()
+      },
+    }),
+    new winston.transports.File({ filename, level: 'info' }),
+  ]
+})
+
+const levels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  verbose: 4,
+  debug: 5,
+  silly: 6
+}
+
+const wrapper = (f) => (...args) => {
+  return f.call(logger, ['[ESRT]', ...args].join(' ** '))
+}
+
+Object.keys(levels).forEach(method => {
+  const f = logger[method]
+  logger[method] = wrapper(f)
+})
+
+
+module.exports = logger
+
+/***/ }),
+/* 14 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("path");;
+
+/***/ }),
+/* 15 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs");;
+
+/***/ }),
+/* 16 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("winston");;
+
+/***/ }),
+/* 17 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const path = __webpack_require__(14)
 const core = __webpack_require__(1)
 
 class Transformer {
@@ -674,34 +761,28 @@ class Transformer {
 module.exports = Transformer
 
 /***/ }),
-/* 14 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("path");;
-
-/***/ }),
-/* 15 */
+/* 18 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const factory = __webpack_require__(3)
-const TsTransformer = __webpack_require__(16)
+const TsTransformer = __webpack_require__(19)
 
 module.exports = factory(TsTransformer)
 
 /***/ }),
-/* 16 */
+/* 19 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const ts = __webpack_require__(5)
-const TsProcessor = __webpack_require__(17)
+const TsProcessor = __webpack_require__(20)
 const { transformCgi } = __webpack_require__(12)
 const {
   getParseBase64Promise,
   getParseJsPromise
 } = __webpack_require__(9)
+const logger = __webpack_require__(13)
 const { printNode } = __webpack_require__(4)
-const Transformer = __webpack_require__(13)
+const Transformer = __webpack_require__(17)
 const core = __webpack_require__(1)
 
 class TsTransformer extends Transformer {
@@ -771,7 +852,9 @@ class TsTransformer extends Transformer {
       res.forEach(cs => {
         if (!cs) return
         // recover prefix space
-        const newCode = (transformedCode.substr(cs.start + diff, cs.end - cs.start).match(/^\s+/) || [''])[0] + cs.target
+        const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
+        const newCode = (oldCode.match(/^\s+/) || [''])[0] + cs.target
+        logger.info('ts', `file: ${this.filename}`, `from: ${oldCode.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
         transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
         diff += newCode.length - cs.end + cs.start
       })
@@ -783,7 +866,7 @@ class TsTransformer extends Transformer {
 module.exports = TsTransformer
 
 /***/ }),
-/* 17 */
+/* 20 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const ts = __webpack_require__(5)
@@ -794,7 +877,7 @@ const {
   isAccessIgnore,
   printNode
 } = __webpack_require__(4)
-const Changeset = __webpack_require__(18)
+const Changeset = __webpack_require__(21)
 const core = __webpack_require__(1)
 
 const keywords = 'align-content align-items align-self all animation animation-delay animation-direction animation-duration animation-fill-mode animation-iteration-count animation-name animation-play-state animation-timing-function backface-visibility background background-attachment background-blend-mode background-clip background-color background-image background-origin background-position background-repeat background-size border border-bottom border-bottom-color border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width border-collapse border-color border-image border-image-outset border-image-repeat border-image-slice border-image-source border-image-width border-left border-left-color border-left-style border-left-width border-radius border-right border-right-color border-right-style border-right-width border-spacing border-style border-top border-top-color border-top-left-radius border-top-right-radius border-top-style border-top-width border-width bottom box-decoration-break box-shadow box-sizing break-after break-before break-inside caption-side caret-color @charset clear clip color column-count column-fill column-gap column-rule column-rule-color column-rule-style column-rule-width column-span column-width columns content counter-increment counter-reset cursor direction display empty-cells filter flex flex-basis flex-direction flex-flow flex-grow flex-shrink flex-wrap float font @font-face font-family font-feature-settings @font-feature-values font-kerning font-language-override font-size font-size-adjust font-stretch font-style font-synthesis font-variant font-variant-alternates font-variant-caps font-variant-east-asian font-variant-ligatures font-variant-numeric font-variant-position font-weight grid grid-area grid-auto-columns grid-auto-flow grid-auto-rows grid-column grid-column-end grid-column-gap grid-column-start grid-gap grid-row grid-row-end grid-row-gap grid-row-start grid-template grid-template-areas grid-template-columns grid-template-rows hanging-punctuation height hyphens image-rendering @import isolation justify-content @keyframes left letter-spacing line-break line-height list-style list-style-image list-style-position list-style-type margin margin-bottom margin-left margin-right margin-top max-height max-width @media min-height min-width mix-blend-mode object-fit object-position opacity order orphans outline outline-color outline-offset outline-style outline-width overflow overflow-wrap overflow-x overflow-y padding padding-bottom padding-left padding-right padding-top page-break-after page-break-before page-break-inside perspective perspective-origin pointer-events position quotes resize right scroll-behavior tab-size table-layout text-align text-align-last text-combine-upright text-decoration text-decoration-color text-decoration-line text-decoration-style text-indent text-justify text-orientation text-overflow text-shadow text-transform text-underline-position top transform transform-origin transform-style transition transition-delay transition-duration transition-property transition-timing-function unicode-bidi user-select vertical-align visibility white-space widows width word-break word-spacing word-wrap writing-mode z-index box-orient box-align box-pack'.split(' ')
@@ -909,9 +992,9 @@ class TsProcessor {
     if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
       text = expr.text
       if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(expr.parent) || cssDetect(text)) {
-        if (location = execStyleUrl(text, true)) {
-          cs = { node: expr, text, locations: location }
-        }
+        const locations = execStyleUrl(text, true)
+        if (!locations.length) return
+        cs = { node: expr, text, locations }
       }
     } else if (ts.isTemplateExpression(expr)) {
       text = expr.head.text
@@ -997,7 +1080,7 @@ class TsProcessor {
 module.exports = TsProcessor
 
 /***/ }),
-/* 18 */
+/* 21 */
 /***/ ((module) => {
 
 class Changeset {
@@ -1065,15 +1148,15 @@ class Changeset {
 module.exports = Changeset
 
 /***/ }),
-/* 19 */
+/* 22 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // If your plugin is direct dependent to the html webpack plugin:
-const HtmlWebpackPlugin = __webpack_require__(20)
+const HtmlWebpackPlugin = __webpack_require__(23)
 // If your plugin is using html-webpack-plugin as an optional dependency
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
-const HtmlTransformer = __webpack_require__(21)
+const HtmlTransformer = __webpack_require__(24)
 
 class HtmlPlugin {
   apply(compiler) {
@@ -1093,33 +1176,34 @@ module.exports = HtmlPlugin
 
 
 /***/ }),
-/* 20 */
+/* 23 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("html-webpack-plugin");;
 
 /***/ }),
-/* 21 */
+/* 24 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 var __dirname = "src/core/transformer";
-const htmlparser2 = __webpack_require__(22)
-const domSerializer = __webpack_require__(23)
-const domHandler = __webpack_require__(24)
+const htmlparser2 = __webpack_require__(25)
+const domSerializer = __webpack_require__(26)
+const domHandler = __webpack_require__(27)
 const {
   getParseBase64Promise,
   getParseJsPromise
 } = __webpack_require__(9)
+const logger = __webpack_require__(13)
 const {
   testUrl,
   parseStyleUrl,
   execStyleUrl
 } = __webpack_require__(12)
-const Transformer = __webpack_require__(13)
-const TsTransformer = __webpack_require__(16)
+const Transformer = __webpack_require__(17)
+const TsTransformer = __webpack_require__(19)
 const CssTransformer = __webpack_require__(6)
-const fs = __webpack_require__(25)
+const fs = __webpack_require__(15)
 const path = __webpack_require__(14)
 const core = __webpack_require__(1)
 
@@ -1152,8 +1236,8 @@ class HtmlTransformer extends Transformer {
       try {
         const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
         HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
-      } catch {
-        debugger
+      } catch (err) {
+        logger.error('html inject', err)
       }
     }
     return HtmlTransformer.injectJsCache || null
@@ -1222,21 +1306,32 @@ class HtmlTransformer extends Transformer {
       const extractResult = execStyleUrl(node.attribs[attr], true)
       return Promise
         .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
-        .then(res => res.forEach((v, i) => v && (node.attribs[attr] = node.attribs[attr].replace(extractResult[i].origin, v))))
+        .then(res => res.forEach((v, i) => {
+          if (!v) return
+          const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
+          logger.info('html styleAttr => styleAttr', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          node.attribs[attr] = newCode
+        }))
     } else if (attr) {
       if (attr === 'src' && node.name === 'script') {
         // js src
         return getParseJsPromise(node.attribs[attr]).then(v => {
-          delete node.attribs[attr]
+          logger.info('html script.src => script.text', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
+          delete node.attribs[attr]
         })
       } else {
         // other link
-        return getParseBase64Promise(node.attribs[attr]).then(v => v && (node.attribs[attr] = v))
+        return getParseBase64Promise(node.attribs[attr]).then(v => {
+          if (!v) return
+          logger.info('html link => link', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
+          node.attribs[attr] = v
+        })
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
+      logger.info('html', node.name, '⇩⇩⇩⇩')
       return new transformer({ code: text })
         .transformAsync()
         .then(res => {
@@ -1251,7 +1346,7 @@ class HtmlTransformer extends Transformer {
     return Promise.all(items)
       .then(() => domSerializer.default(this.root))
       .catch(err => {
-        console.log(err)
+        logger.error('html', err)
       })
   }
 }
@@ -1259,32 +1354,25 @@ class HtmlTransformer extends Transformer {
 module.exports = HtmlTransformer
 
 /***/ }),
-/* 22 */
+/* 25 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("htmlparser2");;
 
 /***/ }),
-/* 23 */
+/* 26 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("dom-serializer");;
 
 /***/ }),
-/* 24 */
+/* 27 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("domhandler");;
-
-/***/ }),
-/* 25 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("fs");;
 
 /***/ })
 /******/ 	]);

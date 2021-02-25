@@ -5,6 +5,7 @@ const {
   getParseBase64Promise,
   getParseJsPromise
 } = require('../../utils/http')
+const logger = require('../../utils/logger')
 const { printNode } = require('../../utils/ast')
 const Transformer = require('.')
 const core = require('../')
@@ -76,7 +77,9 @@ class TsTransformer extends Transformer {
       res.forEach(cs => {
         if (!cs) return
         // recover prefix space
-        const newCode = (transformedCode.substr(cs.start + diff, cs.end - cs.start).match(/^\s+/) || [''])[0] + cs.target
+        const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
+        const newCode = (oldCode.match(/^\s+/) || [''])[0] + cs.target
+        logger.info('ts', `file: ${this.filename}`, `from: ${oldCode.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
         transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
         diff += newCode.length - cs.end + cs.start
       })
