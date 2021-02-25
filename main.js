@@ -667,8 +667,25 @@ const path = __webpack_require__(14)
 const fs = __webpack_require__(15)
 const winston = __webpack_require__(16)
 
-const filename = path.resolve(process.cwd(), 'esrt.log')
-if (fs.existsSync(filename)) fs.unlinkSync(filename)
+// const dirname = path.resolve(process.cwd(), 'esrtlogs')
+// if (fs.existsSync(filename)) fs.unlinkSync(filename)
+const filename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}.log`)
+
+function formateDate() {
+  const now = new Date()
+  const date = [
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate()
+  ]
+  const time = [
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds()
+  ]
+  return date.join('-') + '/' + time.join(':')
+}
 
 winston.addColors({
   error: 'red',
