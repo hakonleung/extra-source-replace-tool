@@ -75,8 +75,10 @@ class TsTransformer extends Transformer {
       let diff = 0
       res.forEach(cs => {
         if (!cs) return
-        transformedCode = transformedCode.substr(0, cs.start + diff) + cs.target + transformedCode.substr(cs.end + diff)
-        diff += cs.target.length - cs.end + cs.start
+        // recover prefix space
+        const newCode = (transformedCode.substr(cs.start + diff, cs.end - cs.start).match(/^\s+/) || [''])[0] + cs.target
+        transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
+        diff += newCode.length - cs.end + cs.start
       })
       return transformedCode
     })
