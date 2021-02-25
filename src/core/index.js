@@ -16,7 +16,7 @@ const DEFAULT_OPTIONS = {
   ignoreBinaryAccesses: [],
   ignoreCallAccesses: [],
   transformCgi: null,
-  blockExtraUrl: true,
+  blockExtraUrl: false,
   blockPaths: [],
   blockIntraUrl: false,
   l1PathMap: {},

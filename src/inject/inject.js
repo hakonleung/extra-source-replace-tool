@@ -1,6 +1,7 @@
 const { transformCgi } = require('../utils/url-parser');
 
 window.CORE_OPTIONS = JSON.parse('__OPTIONS__');
+CORE_OPTIONS.blockExtraUrl = true;
 
 ((global) => {
     function replaceMethods() {

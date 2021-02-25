@@ -53,7 +53,7 @@ const DEFAULT_OPTIONS = {
   ignoreBinaryAccesses: [],
   ignoreCallAccesses: [],
   transformCgi: null,
-  blockExtraUrl: true,
+  blockExtraUrl: false,
   blockPaths: [],
   blockIntraUrl: false,
   l1PathMap: {},
@@ -711,7 +711,7 @@ class TsTransformer extends Transformer {
   }
 
   transformAsync() {
-    const changeset = this.processor.getChangeset()
+    const { changeset } = this.processor.traverse()
     let transformedCode = this.code
     const genNewCodePromise = (cs, isSpecific) => {
       let targetCs
@@ -739,7 +739,7 @@ class TsTransformer extends Transformer {
         }
         targetCs = cs
       } else {
-        if (!cs.child || !(targetCs = cs.child[0].value[0])) return Promise.resolve()
+        if (!cs.child || !(targetCs = cs.child.value[0])) return Promise.resolve()
       }
       // cgi
       const { node, location } = targetCs
@@ -787,7 +787,6 @@ module.exports = TsTransformer
 const ts = __webpack_require__(5)
 const { getUrlFullInfo, execStyleUrl } = __webpack_require__(12)
 const {
-  stringPlusToTemplateExpression,
   getAccess,
   isAccessMatch,
   isAccessIgnore,
@@ -873,111 +872,123 @@ class TsProcessor {
     this.sourceFile = sourceFile
     this.options = options
     this.jsxAttribute = null
+
+    this.traverseFuncs = [
+      this.traverseExpression,
+      this.traverseStringPlus,
+      this.traverseString
+    ]
   }
 
-  getChangeset(root = this.sourceFile, onlyChild) {
-    // if (this.sourceFile.fileName.indexOf('test') !== -1) {
-    //   debugger
-    // }
-
-    const changeset = new Changeset(this.sourceFile)
-    const nodeVisitor = (node) => {
-      if (ts.isJsxAttribute(node)) {
-        this.jsxAttribute = node
-      }
-      if (isIgnoreNode(node, this.sourceFile)) return
-
-      const result = this.process(node)
-      if (result) {
-        if (!result.ignore) {
-          changeset.add(result)
+  traverse(root = this.sourceFile, changeset = new Changeset(this.sourceFile)) {
+    const ast = ts.transform(root, [(context) => (root) => {
+      const nodeVisitor = (node) => {
+        if (isIgnoreNode(node, this.sourceFile)) return node
+        if (!this.jsxAttribute && ts.isJsxAttribute(node)) this.jsxAttribute = node
+        let res
+        this.traverseFuncs.some(f => res = f.call(this, node, changeset))
+        if (res) {
+          if (res.ignore) return node
+          return res.node
         }
-        return
+        res = ts.visitEachChild(node, nodeVisitor, context)
+        if (this.jsxAttribute === node) this.jsxAttribute = null
+        return res
       }
-
-      ts.forEachChild(node, nodeVisitor)
-      if (this.jsxAttribute === node) {
-        this.jsxAttribute = null
-      }
-    }
-
-    ts[onlyChild ? 'forEachChild' : 'visitNode'](root, nodeVisitor)
-    return changeset
+      return ts.visitNode(root, nodeVisitor)
+    }])
+    return { node: ast.transformed[0], changeset }
   }
 
-  process(node) {
-    let result = null
-      ;[
-        this.expressionProc,
-        this.stringPlusProc,
-        this.stringProc,
-      ].some(proc => result = proc.call(this, node))
-
-    if (result && !result.ignore) {
-      if (result.start === undefined) {
-        result.start = result.node.pos
-        result.end = result.node.end
-      }
-      result.code = printNode(result.node, this.sourceFile)
-    }
-
-    return result
-  }
-
-  stringPlusProc(node) {
-    const templateAst = stringPlusToTemplateExpression(node)
-    if (templateAst) {
-      const result = this.stringProc(templateAst)
-      if (!result) return
-      result.start = node.pos
-      result.end = node.end
-      return result
-    }
-  }
-
-  stringProc(node) {
+  traverseString(expr, changeset, incomplete = false) {
     let text = ''
-    let incomplete = false
     let location
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      text = node.text
-      if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(node.parent) || cssDetect(text)) {
-        if (location = execStyleUrl(text, true)) return { node, text, locations: location }
+    let cs
+    if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+      text = expr.text
+      if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(expr.parent) || cssDetect(text)) {
+        if (location = execStyleUrl(text, true)) {
+          cs = { node: expr, text, locations: location }
+        }
       }
-    } else if (ts.isTemplateExpression(node)) {
-      text = node.head.text
+    } else if (ts.isTemplateExpression(expr)) {
+      text = expr.head.text
       incomplete = true
+    } else {
+      return
     }
-    return text && (location = getUrlFullInfo(text, incomplete, core.options)) && {
-      node,
-      text,
-      location,
-    } || null
+    if (!cs && text && (location = getUrlFullInfo(text, incomplete, core.options))) {
+      cs = { node: expr, text, location }
+    }
+    if (cs) {
+      changeset.add(cs)
+    }
+    return { node: expr, changeset }
   }
 
-  expressionProc(node) {
-    const isBinaryExpression = ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken
-    const isCallExpression = ts.isCallExpression(node)
+  traverseStringPlus(expr, changeset) {
+    const isStringPlusExp = node => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
+    if (!isStringPlusExp(expr)) return
+    const ast = ts.transform(expr, [(context) => (root) => {
+      const handler = (node) => {
+        if (!isStringPlusExp(node)) return this.traverse(node, changeset).node
+        if (
+          (ts.isStringLiteral(node.left) || ts.isNoSubstitutionTemplateLiteral(node.left)) &&
+          (ts.isStringLiteral(node.right) || ts.isNoSubstitutionTemplateLiteral(node.right))
+        ) {
+          const textNode = new ts.createStringLiteral(node.left.text + node.right.text)
+          textNode.parent = node.parent
+          textNode.pos = node.left.pos
+          textNode.end = node.right.end
+          this.traverseString(textNode, changeset)
+          return textNode
+        } else if (ts.isStringLiteral(node.left) || ts.isNoSubstitutionTemplateLiteral(node.left) || ts.isTemplateExpression(node.left)) {
+          this.traverseString(node.left, changeset)
+          return node
+        }
+      }
+      const nodeVisitor = (node) => {
+        let newNode = handler(node)
+        if (newNode) return newNode
+        newNode = ts.visitEachChild(node, nodeVisitor, context)
+        return handler(newNode) || newNode
+      }
+      return ts.visitNode(root, nodeVisitor)
+    }])
+    return { node: ast.transformed[0], changeset }
+  }
+
+  traverseExpression(expr, changeset) {
+    const isBinaryExpression = ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.EqualsToken
+    const isCallExpression = ts.isCallExpression(expr)
+
+    if (!isBinaryExpression && !isCallExpression) return
+
     let accessEntry
     let argsEntry
 
-    if (isBinaryExpression || isCallExpression) {
-      if (isBinaryExpression) {
-        accessEntry = 'left'
-        argsEntry = 'right'
-      } else {
-        accessEntry = 'expression'
-        argsEntry = 'arguments'
-      }
-      const access = getAccess(node[accessEntry])
-      if (isAccessIgnore(access, isCallExpression)) return { ignore: true }
-      if (!isAccessMatch(access, isCallExpression)) return null
-      const child = (node[argsEntry] instanceof Array ? node[argsEntry] : [node[argsEntry]]).map(v => this.getChangeset(v))
-      if (child.length) {
-        return { node, access, child }
-      }
+    if (isBinaryExpression) {
+      accessEntry = 'left'
+      argsEntry = 'right'
+    } else {
+      accessEntry = 'expression'
+      argsEntry = 'arguments'
     }
-    return null
+    const access = getAccess(expr[accessEntry])
+    if (isAccessIgnore(access, isCallExpression)) return { ignore: true }
+    if (!isAccessMatch(access, isCallExpression)) return
+    let childChangeset = new Changeset(this.sourceFile)
+    let childRes = this.traverse((expr[argsEntry] instanceof Array ? expr[argsEntry][0] : expr[argsEntry]), childChangeset)
+
+    if (childRes) {
+      if (expr[argsEntry] instanceof Array) {
+        expr[argsEntry][0] = childRes.node
+      } else {
+        expr[argsEntry] = childRes.node
+      }
+      changeset.add({ node: expr, access, child: childChangeset })
+      return { node: expr, changeset }
+    }
   }
 }
 
@@ -1013,21 +1024,30 @@ class Changeset {
   }
 
   add(cs) {
-    // 不存在区间重合的情况
-    const { start, end } = cs
-    const index = this.findInsertIndex(start, end)
-    this._changesets.splice(index, 0, cs)
+    if (cs.start === undefined) {
+      cs.start = cs.node.pos
+      cs.end = cs.node.end
+    }
+    const [index, replace] = this.findInsertIndex(cs.start, cs.end)
+    this._changesets.splice(index, replace, cs)
   }
 
   findInsertIndex(start, end) {
-    if (!this._changesets.length) return 0
+    if (!this._changesets.length) return [0, 0]
     let s = 0
     let e = this._changesets.length - 1
     let i
     while (s <= e) {
       i = Math.floor((s + e) / 2)
       const startMt = i ? start >= this._changesets[i - 1].end : true
-      if (startMt && end <= this._changesets[i].start) {
+      if (start <= this._changesets[i].start && end >= this._changesets[i].end) {
+        let t = i + 1
+        while (t < this._changesets.length && end >= this._changesets[t].end) {
+          t += 1
+        }
+        // 重叠区间，替换
+        return [i, t - i]
+      } else if (startMt && end <= this._changesets[i].start) {
         s = i
         break
       } else if (!startMt) {
@@ -1036,7 +1056,7 @@ class Changeset {
         s = i + 1
       }
     }
-    return s
+    return [s, 0]
   }
 }
 

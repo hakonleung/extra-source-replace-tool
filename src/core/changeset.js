@@ -24,21 +24,30 @@ class Changeset {
   }
 
   add(cs) {
-    // 不存在区间重合的情况
-    const { start, end } = cs
-    const index = this.findInsertIndex(start, end)
-    this._changesets.splice(index, 0, cs)
+    if (cs.start === undefined) {
+      cs.start = cs.node.pos
+      cs.end = cs.node.end
+    }
+    const [index, replace] = this.findInsertIndex(cs.start, cs.end)
+    this._changesets.splice(index, replace, cs)
   }
 
   findInsertIndex(start, end) {
-    if (!this._changesets.length) return 0
+    if (!this._changesets.length) return [0, 0]
     let s = 0
     let e = this._changesets.length - 1
     let i
     while (s <= e) {
       i = Math.floor((s + e) / 2)
       const startMt = i ? start >= this._changesets[i - 1].end : true
-      if (startMt && end <= this._changesets[i].start) {
+      if (start <= this._changesets[i].start && end >= this._changesets[i].end) {
+        let t = i + 1
+        while (t < this._changesets.length && end >= this._changesets[t].end) {
+          t += 1
+        }
+        // 重叠区间，替换
+        return [i, t - i]
+      } else if (startMt && end <= this._changesets[i].start) {
         s = i
         break
       } else if (!startMt) {
@@ -47,7 +56,7 @@ class Changeset {
         s = i + 1
       }
     }
-    return s
+    return [s, 0]
   }
 }
 

@@ -16,7 +16,7 @@ class TsTransformer extends Transformer {
   }
 
   transformAsync() {
-    const changeset = this.processor.getChangeset()
+    const { changeset } = this.processor.traverse()
     let transformedCode = this.code
     const genNewCodePromise = (cs, isSpecific) => {
       let targetCs
@@ -44,7 +44,7 @@ class TsTransformer extends Transformer {
         }
         targetCs = cs
       } else {
-        if (!cs.child || !(targetCs = cs.child[0].value[0])) return Promise.resolve()
+        if (!cs.child || !(targetCs = cs.child.value[0])) return Promise.resolve()
       }
       // cgi
       const { node, location } = targetCs
