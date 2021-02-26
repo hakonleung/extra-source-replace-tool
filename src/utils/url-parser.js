@@ -9,8 +9,8 @@ const URL_REGS = {
   protocol: `(https?:)?\/\/`,
   pathname: `(^[${VALID_CHARS.pathname}]+)?((\\/[${VALID_CHARS.pathname}]+)+\\/?|\/)`,
   host: `([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(:\d+)?`,
-  hash: `#[${VALID_CHARS.hash}]+`,
-  search: `\\?[${VALID_CHARS.search}]+`
+  hash: `#[${VALID_CHARS.hash}]*`,
+  search: `\\?[${VALID_CHARS.search}]*`
 }
 const _w = (name, group) => `(${group ? `?<${name}>` : ''}${URL_REGS[name]})`
 Object.keys(URL_REGS).forEach(v => {
@@ -73,7 +73,7 @@ const execUrlNormalize = (groups, options = {}) => {
 const parseUrl = (str, options = {}) => {
   if (str === undefined) return null
   let res = URL_REG.exec(str)
-  if (!res) return null
+  if (!res || res[0] !== str) return null
   res = {
     href: res[0],
     ...res.groups

@@ -51,6 +51,7 @@ class TsTransformer extends Transformer {
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
       const newUrl = transformCgi(location, core.options)
+      if (newUrl === node.text) return Promise.resolve()
       let newNode = null
       if (ts.isStringLiteral(node)) {
         newNode = ts.createStringLiteral(newUrl)
@@ -77,8 +78,15 @@ class TsTransformer extends Transformer {
       res.forEach(cs => {
         if (!cs) return
         // recover prefix space
+        // const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
+        // const newCode = (oldCode.match(/^\s+/) || [''])[0] + cs.target
+        try {
+          cs.start = cs.node.getStart()
+        } catch(err) {
+          // debugger
+        }
         const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
-        const newCode = (oldCode.match(/^\s+/) || [''])[0] + cs.target
+        const newCode = cs.target
         logger.info('ts', `file: ${this.filename}`, `from: ${oldCode.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
         transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
         diff += newCode.length - cs.end + cs.start

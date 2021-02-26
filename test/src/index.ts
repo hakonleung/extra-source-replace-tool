@@ -6,13 +6,12 @@ declare var window: Window;
 
 (window as any)['location'] = `https://a.a${121}` + 'aaa';
 
-let a:any = `/doc/getinfo?${1}`
-a = `doc/getinfo`
+let a: any
 window.open('https://a.a', '_self')
 window.location.href = 'https://doc.weixin.qq.com/doc/getinfo'
 
 a = `background-image: url(https://rescdn.qqmail.com/node/wework/images/wwdoc_edit_expire.a6ecd3e29e.png)`
-a = (str: string) => {}
+a = (str: string) => { }
 let d = '/txdoc/e' + '/txdoc/g' + `/txdoc/h`
 const c = `/txdoc/a${`/txdoc/b${'/txdoc/c'}`}`
 let f
@@ -25,5 +24,14 @@ window.addEventListener('load', () => {
   const url = `wss://window.location.host`;
   const tencentDocOpenUrl = (url: string, type: string) => { };
   tencentDocOpenUrl('http://finance.qq.com/products/portfolio/download.htm', '_blank');
-  if (a === 'constructor') {}
 })
+
+if (a === 'constructor') { }
+a = `/doc/getinfo?${1}`
+a = `doc/getinfo`
+a = 'https://doc.weixin.qq.com/txdoc/get_openusers'
+// a = '/'
+a = 'G/通用格式'
+a = 'yyyy/m/d h:mm:ss;@'
+a = /* webpackChunkName: "bundle_calculation-environment" */ '/a/a' + `a`
+a = 'TencentDocs/{1}[0-9].{1}[0-9].{1}[0-9]'
