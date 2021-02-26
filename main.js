@@ -942,7 +942,8 @@ const IgnoreType = {
   Property: 'Property',
   Enum: 'Enum',
   IgnoreComment: 'IgnoreComment',
-  Import: 'Import'
+  Import: 'Import',
+  Require: 'Require'
 }
 
 /**
@@ -959,6 +960,7 @@ function isIgnoreNode(node, sourceFile) {
     && /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())) {
     return IgnoreType.Console
   }
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.escapedText === 'require') return IgnoreType.Require
   // type definition
   if (ts.isTypeNode(node)) return IgnoreType.TypeNode
   // ignore console
