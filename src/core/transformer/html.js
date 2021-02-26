@@ -127,6 +127,7 @@ class HtmlTransformer extends Transformer {
       if (attr === 'src' && node.name === 'script') {
         // js src
         return getParseJsPromise(node.attribs[attr]).then(v => {
+          if (!v) return
           logger.info('html script.src => script.text', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
