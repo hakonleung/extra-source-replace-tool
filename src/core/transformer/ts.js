@@ -51,7 +51,7 @@ class TsTransformer extends Transformer {
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
       const newUrl = transformCgi(location, core.options)
-      if (newUrl === node.text) return Promise.resolve()
+      if (newUrl === (ts.isTemplateExpression(node) ? node.head.text : node.text)) return Promise.resolve()
       let newNode = null
       if (ts.isStringLiteral(node)) {
         newNode = ts.createStringLiteral(newUrl)

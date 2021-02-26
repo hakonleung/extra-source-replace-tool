@@ -64,7 +64,7 @@ function isIgnoreNode(node, sourceFile) {
     && /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())) {
     return IgnoreType.Console
   }
-  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.escapedText === 'require') return IgnoreType.Require
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ['require', 'import'].includes(node.expression.escapedText)) return IgnoreType.Require
   // type definition
   if (ts.isTypeNode(node)) return IgnoreType.TypeNode
   // ignore console

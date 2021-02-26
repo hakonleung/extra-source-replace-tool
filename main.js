@@ -843,7 +843,7 @@ class TsTransformer extends Transformer {
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
       const newUrl = transformCgi(location, core.options)
-      if (newUrl === node.text) return Promise.resolve()
+      if (newUrl === (ts.isTemplateExpression(node) ? node.head.text : node.text)) return Promise.resolve()
       let newNode = null
       if (ts.isStringLiteral(node)) {
         newNode = ts.createStringLiteral(newUrl)
@@ -960,7 +960,7 @@ function isIgnoreNode(node, sourceFile) {
     && /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())) {
     return IgnoreType.Console
   }
-  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.escapedText === 'require') return IgnoreType.Require
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ['require', 'import'].includes(node.expression.escapedText)) return IgnoreType.Require
   // type definition
   if (ts.isTypeNode(node)) return IgnoreType.TypeNode
   // ignore console
