@@ -72,7 +72,8 @@ const DEFAULT_OPTION_MAP = {
       wedoc: '/cgi-bin/doc',
       txdoc: '/cgi-bin/doc',
       comment: '/cgi-bin/doc',
-      disk: '/cgi-bin/disk'
+      disk: '/cgi-bin/disk',
+      info: '/cgi-bin/disk',
     },
     l2PathMap: {
       getinfo: 'get_info'
