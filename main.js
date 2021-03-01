@@ -99,7 +99,7 @@ core.config = (options, reset, type = 'WEFE') => {
   }
   core.options = {
     ...core.options,
-    ...options
+    ...(typeof options === 'object' ? options : {})
   }
 }
 
