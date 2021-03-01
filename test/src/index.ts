@@ -41,3 +41,5 @@
 'https://doc.weixin.qq.com/txdoc/getres?nocache=true&ignorlocaldiff=true&file=/'
 '/txdoc/getinfo'
 // import('./test.tsx')
+
+window.open()

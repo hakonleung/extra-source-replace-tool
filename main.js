@@ -1076,8 +1076,10 @@ class TsProcessor {
     const access = getAccess(expr[accessEntry])
     if (isIgnoreAccess(access, isCallExpression)) return { ignore: true }
     if (!isMatchAccess(access, isCallExpression)) return
+    const child = expr[argsEntry] instanceof Array ? expr[argsEntry][0] : expr[argsEntry]
+    if (!child) return
     let childChangeset = new Changeset(this.sourceFile)
-    let childRes = this.traverse((expr[argsEntry] instanceof Array ? expr[argsEntry][0] : expr[argsEntry]), childChangeset)
+    let childRes = this.traverse(child, childChangeset)
 
     if (childRes) {
       if (expr[argsEntry] instanceof Array) {
