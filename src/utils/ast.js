@@ -132,12 +132,7 @@ const isIgnoreFile = (source, map, filename) => {
 }
 
 const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
-  try {
-    return ts.createPrinter().printNode(hint, node, sourceFile)
-  } catch (err) {
-    debugger
-  }
-  return ''
+  return ts.createPrinter().printNode(hint, node, sourceFile)
 }
 
 module.exports = {
