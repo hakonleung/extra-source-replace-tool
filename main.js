@@ -287,6 +287,7 @@ const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
   } catch (err) {
     debugger
   }
+  return ''
 }
 
 module.exports = {
