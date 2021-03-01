@@ -90,19 +90,6 @@ const core = {
   options: DEFAULT_OPTIONS
 }
 
-// let _options = DEFAULT_OPTIONS
-// Object.defineProperty(core, 'options', {
-//   get() {
-//     return _options
-//   },
-//   set(opts) {
-//     _options = {
-//       ...DEFAULT_OPTIONS,
-//       ...opts
-//     }
-//   }
-// })
-
 core.config = (options, reset, type = 'WEFE') => {
   if (reset) {
     core.options = {
