@@ -73,7 +73,7 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const isAccessValid = (access, validAccesses) => {
+const matchAccess = (access, validAccesses) => {
   const { global, globalAlias } = core.options
   return access && access.length > 0 && validAccesses.some(validAccess => {
     let validStart = 0
@@ -90,14 +90,14 @@ const isAccessValid = (access, validAccesses) => {
   })
 }
 
-const isAccessMatch = (access, isCallExpression) => {
+const isMatchAccess = (access, isCallExpression) => {
   const { matchBinaryAccesses, matchCallAccesses } = core.options
-  return isAccessValid(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
+  return matchAccess(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
 }
 
-const isAccessIgnore = (access, isCallExpression) => {
+const isIgnoreAccess = (access, isCallExpression) => {
   const { ignoreBinaryAccesses, ignoreCallAccesses } = core.options
-  return isAccessValid(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
+  return matchAccess(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
 }
 
 const getAccess = (node) => {
@@ -141,8 +141,8 @@ const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
 
 module.exports = {
   stringPlusToTemplateExpression,
-  isAccessMatch,
-  isAccessIgnore,
+  isMatchAccess,
+  isIgnoreAccess,
   getAccess,
   isIgnoreFile,
   printNode

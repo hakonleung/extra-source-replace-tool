@@ -2,8 +2,8 @@ const ts = require('typescript')
 const { getUrlFullInfo, execStyleUrl } = require('../../utils/url-parser')
 const {
   getAccess,
-  isAccessMatch,
-  isAccessIgnore,
+  isMatchAccess,
+  isIgnoreAccess,
   printNode
 } = require('../../utils/ast')
 const Changeset = require('../changeset')
@@ -193,8 +193,8 @@ class TsProcessor {
       argsEntry = 'arguments'
     }
     const access = getAccess(expr[accessEntry])
-    if (isAccessIgnore(access, isCallExpression)) return { ignore: true }
-    if (!isAccessMatch(access, isCallExpression)) return
+    if (isIgnoreAccess(access, isCallExpression)) return { ignore: true }
+    if (!isMatchAccess(access, isCallExpression)) return
     let childChangeset = new Changeset(this.sourceFile)
     let childRes = this.traverse((expr[argsEntry] instanceof Array ? expr[argsEntry][0] : expr[argsEntry]), childChangeset)
 

@@ -66,7 +66,7 @@ const DEFAULT_OPTIONS = {
 const DEFAULT_OPTION_MAP = {
   WEFE: {
     origins: ['https://doc.weixin.qq.com'],
-    blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+    // blockPaths: ['/txdoc/getauthinfo', '/info/report'],
     l1PathMap: {
       doc: '/cgi-bin/doc',
       wedoc: '/cgi-bin/doc',
@@ -235,7 +235,7 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const isAccessValid = (access, validAccesses) => {
+const matchAccess = (access, validAccesses) => {
   const { global, globalAlias } = core.options
   return access && access.length > 0 && validAccesses.some(validAccess => {
     let validStart = 0
@@ -252,14 +252,14 @@ const isAccessValid = (access, validAccesses) => {
   })
 }
 
-const isAccessMatch = (access, isCallExpression) => {
+const isMatchAccess = (access, isCallExpression) => {
   const { matchBinaryAccesses, matchCallAccesses } = core.options
-  return isAccessValid(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
+  return matchAccess(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
 }
 
-const isAccessIgnore = (access, isCallExpression) => {
+const isIgnoreAccess = (access, isCallExpression) => {
   const { ignoreBinaryAccesses, ignoreCallAccesses } = core.options
-  return isAccessValid(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
+  return matchAccess(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
 }
 
 const getAccess = (node) => {
@@ -303,8 +303,8 @@ const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
 
 module.exports = {
   stringPlusToTemplateExpression,
-  isAccessMatch,
-  isAccessIgnore,
+  isMatchAccess,
+  isIgnoreAccess,
   getAccess,
   isIgnoreFile,
   printNode
@@ -899,8 +899,8 @@ const ts = __webpack_require__(5)
 const { getUrlFullInfo, execStyleUrl } = __webpack_require__(12)
 const {
   getAccess,
-  isAccessMatch,
-  isAccessIgnore,
+  isMatchAccess,
+  isIgnoreAccess,
   printNode
 } = __webpack_require__(4)
 const Changeset = __webpack_require__(21)
@@ -1090,8 +1090,8 @@ class TsProcessor {
       argsEntry = 'arguments'
     }
     const access = getAccess(expr[accessEntry])
-    if (isAccessIgnore(access, isCallExpression)) return { ignore: true }
-    if (!isAccessMatch(access, isCallExpression)) return
+    if (isIgnoreAccess(access, isCallExpression)) return { ignore: true }
+    if (!isMatchAccess(access, isCallExpression)) return
     let childChangeset = new Changeset(this.sourceFile)
     let childRes = this.traverse((expr[argsEntry] instanceof Array ? expr[argsEntry][0] : expr[argsEntry]), childChangeset)
 

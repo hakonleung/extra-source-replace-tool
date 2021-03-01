@@ -29,7 +29,7 @@ const DEFAULT_OPTIONS = {
 const DEFAULT_OPTION_MAP = {
   WEFE: {
     origins: ['https://doc.weixin.qq.com'],
-    blockPaths: ['/txdoc/getauthinfo', '/info/report'],
+    // blockPaths: ['/txdoc/getauthinfo', '/info/report'],
     l1PathMap: {
       doc: '/cgi-bin/doc',
       wedoc: '/cgi-bin/doc',
