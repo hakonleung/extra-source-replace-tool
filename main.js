@@ -1178,11 +1178,11 @@ const HtmlWebpackPlugin = __webpack_require__(23)
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = __webpack_require__(24)
 
-class HtmlPlugin {
+class HtmlWebpackESRTPlugin {
   apply(compiler) {
-    compiler.hooks.compilation.tap('HtmlLinkTransformPlugin', (compilation) => {
+    compiler.hooks.compilation.tap('ESRTPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
-        'HtmlLinkTransformPlugin',
+        'ESRTPlugin',
         (data, cb) => new HtmlTransformer({ code: data.html })
           .transformAsync()
           .then(html => cb(null, { ...data, html }))
@@ -1192,7 +1192,7 @@ class HtmlPlugin {
   }
 }
 
-module.exports = HtmlPlugin
+module.exports = HtmlWebpackESRTPlugin
 
 
 /***/ }),

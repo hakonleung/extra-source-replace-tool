@@ -12,11 +12,16 @@
     "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject",
     "commit": "yarn build && git add . && git commit -m 'feat: t' && git push remote master && git push origin master && tnpm version patch && tnpm publish"
   },
+  "keywords": [
+    "html-webpack-plugin",
+    "url",
+    "plugin",
+    "loader"
+  ],
   "dependencies": {
     "core-js": "^3.9.0",
     "dom-serializer": "^1.2.0",
     "domhandler": "^4.0.0",
-    "html-webpack-plugin": "^4.5.1",
     "htmlparser2": "^6.0.0",
     "http": "0.0.1-security",
     "https": "^1.0.0",
@@ -58,8 +63,17 @@
     "webpack-cli": "^4.5.0",
     "webpack-dev-server": "^3.11.2",
     "webpack-node-externals": "^2.5.2",
-    "write-file-webpack-plugin": "^4.5.1"
+    "write-file-webpack-plugin": "^4.5.1",
+    "html-webpack-plugin": "^4.5.1"
+  },
+  "peerDependencies": {
+    "html-webpack-plugin": ">=4.0.0",
+    "webpack": ">=4.0.0"
   },
   "author": "hakon",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hakonleung/extra-source-replace-tool.git"
+  }
 }
