@@ -1,6 +1,6 @@
 {
   "name": "@tencent/extra-source-replace-tool",
-  "version": "1.0.40",
+  "version": "1.0.41",
   "description": "",
   "main": "main.js",
   "scripts": {
