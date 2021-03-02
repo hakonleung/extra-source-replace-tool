@@ -44,4 +44,5 @@
 
 // window.open()
 
-'http://oth.eve.mdt.qq.com:8080/analytics/upload?tp=js'
+// 'http://oth.eve.mdt.qq.com:8080/analytics/upload?tp=js'
+'~img/newpic/close-icon_50dp.png'

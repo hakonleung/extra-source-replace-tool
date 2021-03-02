@@ -48,7 +48,8 @@ const IgnoreType = {
   IgnoreComment: 'IgnoreComment',
   Import: 'Import',
   Require: 'Require',
-  ImportKeyword: 'ImportKeyword'
+  ImportKeyword: 'ImportKeyword',
+  Export: 'Export'
 }
 
 /**
@@ -58,6 +59,9 @@ const IgnoreType = {
 function isIgnoreNode(node, sourceFile) {
   if (ts.isImportDeclaration(node)) {
     return IgnoreType.Import
+  }
+  if (ts.isExportDeclaration(node)) {
+    return IgnoreType.Export
   }
   // ignore console
   if (ts.isCallExpression(node)

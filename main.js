@@ -566,10 +566,10 @@ const getUrlFullInfo = (str, incomplete, options = {}) => {
   const location = parseUrl(str, options)
   if (!location || !location.host && !location.pathname) return null
   location.ext = ''
-  location.inside = options.origins && options.origins.includes(location.origin)
+  location.inside = !location.host && location.pathname || options.origins && options.origins.includes(location.origin)
   // empty ext regarded as source, though cgi
   if (!incomplete) {
-    location.ext = (/\.([0-0a-z]+)$/i.exec(location.pathname) || [])[1]
+    location.ext = (/\.([0-0a-z]+)$/i.exec(location.pathname) || [])[1] || ''
     FULL_INFO_CACHE.set(str, location)
   }
   return location
@@ -930,7 +930,8 @@ const IgnoreType = {
   IgnoreComment: 'IgnoreComment',
   Import: 'Import',
   Require: 'Require',
-  ImportKeyword: 'ImportKeyword'
+  ImportKeyword: 'ImportKeyword',
+  Export: 'Export'
 }
 
 /**
@@ -940,6 +941,9 @@ const IgnoreType = {
 function isIgnoreNode(node, sourceFile) {
   if (ts.isImportDeclaration(node)) {
     return IgnoreType.Import
+  }
+  if (ts.isExportDeclaration(node)) {
+    return IgnoreType.Export
   }
   // ignore console
   if (ts.isCallExpression(node)

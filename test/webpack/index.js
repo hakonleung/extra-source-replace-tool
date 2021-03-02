@@ -7,6 +7,7 @@ const core = require('../../src/core')
 
 core.config({
   // requestTimeout: 50
+  loggerTransports: ['console', 'file']
 }, true)
 
 const obeserver = {}
