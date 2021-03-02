@@ -3,6 +3,7 @@ const webpack = require('webpack')
 const WriteFilePlugin = require('write-file-webpack-plugin')
 
 const config = {
+  devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'cheap-source-map',
   mode: process.env.NODE_ENV,
   entry: path.resolve(__dirname, './inject.js'),
   output: {

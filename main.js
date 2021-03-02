@@ -485,9 +485,9 @@ const VALID_CHARS = {
   search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
 }
 const URL_REGS = {
-  protocol: `(https?:)?\/\/`,
-  pathname: `(^[${VALID_CHARS.pathname}]+)?((\\/[${VALID_CHARS.pathname}]+)+\\/?|\/)`,
-  host: `([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(:\d+)?`,
+  protocol: `(https?:)?\\/\\/`,
+  pathname: `(^[${VALID_CHARS.pathname}]+)?((\\/[${VALID_CHARS.pathname}]+)+\\/?|\\/)`,
+  host: `([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(\\:\\d+)?`,
   hash: `#[${VALID_CHARS.hash}]*`,
   search: `\\?[${VALID_CHARS.search}]*`
 }
@@ -566,13 +566,10 @@ const getUrlFullInfo = (str, incomplete, options = {}) => {
   const location = parseUrl(str, options)
   if (!location || !location.host && !location.pathname) return null
   location.ext = ''
-  if (!location.host && location.pathname || options.origins && options.origins.includes(location.origin)) {
-    location.inside = true
-  }
+  location.inside = options.origins && options.origins.includes(location.origin)
   // empty ext regarded as source, though cgi
   if (!incomplete) {
-    const ext = /\.([0-0a-z]+)$/i.exec(location.pathname)
-    if (ext) location.ext = ext[1]
+    location.ext = (/\.([0-0a-z]+)$/i.exec(location.pathname) || [])[1]
     FULL_INFO_CACHE.set(str, location)
   }
   return location

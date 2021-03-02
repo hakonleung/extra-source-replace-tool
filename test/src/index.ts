@@ -36,10 +36,12 @@
 // a = /* webpackChunkName: "bundle_calculation-environment" */ '/a/a' + `a`
 // a = 'TencentDocs/{1}[0-9].{1}[0-9].{1}[0-9]'
 
-'https://docs.qq.com/desktop/m/index.html?tdsourcetag=s_mqq_andr_shortcut'
-'//docs.qq.com/desktop/m/template'
-'https://doc.weixin.qq.com/txdoc/getres?nocache=true&ignorlocaldiff=true&file=/'
-'/txdoc/getinfo'
-// import('./test.tsx')
+// 'https://docs.qq.com/desktop/m/index.html?tdsourcetag=s_mqq_andr_shortcut'
+// '//docs.qq.com/desktop/m/template'
+// 'https://doc.weixin.qq.com/txdoc/getres?nocache=true&ignorlocaldiff=true&file=/'
+// '/txdoc/getinfo'
+// // import('./test.tsx')
 
-window.open()
+// window.open()
+
+'http://oth.eve.mdt.qq.com:8080/analytics/upload?tp=js'
