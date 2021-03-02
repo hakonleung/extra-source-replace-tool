@@ -1,7 +1,7 @@
-const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#`
+const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#%`
 const VALID_CHARS = {
-  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[;:@&=+$,/?#']/g, '').split('').join('\\'),
-  host: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#']/g, '').split('').join('\\'),
+  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[;:@&=+$,/?#'%]/g, '').split('').join('\\'),
+  host: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#'%]/g, '').split('').join('\\'),
   hash: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
   search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
 }
