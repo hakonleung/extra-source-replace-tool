@@ -1,6 +1,7 @@
 const path = require('path')
 const fs = require('fs')
 const winston = require('winston')
+const core = require('../core')
 
 // const dirname = path.resolve(process.cwd(), 'esrtlogs')
 // if (fs.existsSync(filename)) fs.unlinkSync(filename)
@@ -29,18 +30,20 @@ winston.addColors({
   debug: 'green'
 })
 
+const TRANSPORTS_MAP = {
+  console: new winston.transports.Console({
+    colorize: true,
+    prettyPrint: true,
+    timestamp() {
+      return new Date().toLocaleTimeString()
+    },
+  }),
+  file: new winston.transports.File({ filename, level: 'info' }),
+}
+
 const logger = winston.createLogger({
   format: winston.format.simple(),
-  transports: [
-    new winston.transports.Console({
-      colorize: true,
-      prettyPrint: true,
-      timestamp() {
-        return new Date().toLocaleTimeString()
-      },
-    }),
-    new winston.transports.File({ filename, level: 'info' }),
-  ]
+  transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
 })
 
 const levels = {

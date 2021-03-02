@@ -60,7 +60,8 @@ const DEFAULT_OPTIONS = {
   l2PathMap: {},
   injectBlockMethod: false,
   requestTimeout: 3000,
-  requestRetryTimes: 3
+  requestRetryTimes: 3,
+  loggerTransports: ['file']
 }
 
 const DEFAULT_OPTION_MAP = {
@@ -650,6 +651,7 @@ module.exports = {
 const path = __webpack_require__(14)
 const fs = __webpack_require__(15)
 const winston = __webpack_require__(16)
+const core = __webpack_require__(1)
 
 // const dirname = path.resolve(process.cwd(), 'esrtlogs')
 // if (fs.existsSync(filename)) fs.unlinkSync(filename)
@@ -678,18 +680,20 @@ winston.addColors({
   debug: 'green'
 })
 
+const TRANSPORTS_MAP = {
+  console: new winston.transports.Console({
+    colorize: true,
+    prettyPrint: true,
+    timestamp() {
+      return new Date().toLocaleTimeString()
+    },
+  }),
+  file: new winston.transports.File({ filename, level: 'info' }),
+}
+
 const logger = winston.createLogger({
   format: winston.format.simple(),
-  transports: [
-    new winston.transports.Console({
-      colorize: true,
-      prettyPrint: true,
-      timestamp() {
-        return new Date().toLocaleTimeString()
-      },
-    }),
-    new winston.transports.File({ filename, level: 'info' }),
-  ]
+  transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
 })
 
 const levels = {

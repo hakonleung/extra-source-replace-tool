@@ -23,7 +23,8 @@ const DEFAULT_OPTIONS = {
   l2PathMap: {},
   injectBlockMethod: false,
   requestTimeout: 3000,
-  requestRetryTimes: 3
+  requestRetryTimes: 3,
+  loggerTransports: ['file']
 }
 
 const DEFAULT_OPTION_MAP = {
