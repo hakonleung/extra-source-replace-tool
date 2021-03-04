@@ -15,11 +15,11 @@ return /******/ (() => { // webpackBootstrap
 
 const core = __webpack_require__(1)
 const cssLoader = __webpack_require__(2)
-const tsLoader = __webpack_require__(18)
-const HtmlPlugin = __webpack_require__(22)
+const tsLoader = __webpack_require__(17)
+const HtmlPlugin = __webpack_require__(21)
 const CssTransformer = __webpack_require__(6)
-const TsTransformer = __webpack_require__(19)
-const HtmlTransformer = __webpack_require__(24)
+const TsTransformer = __webpack_require__(18)
+const HtmlTransformer = __webpack_require__(23)
 
 module.exports = {
   core,
@@ -309,17 +309,16 @@ module.exports = require("typescript");;
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const postcss = __webpack_require__(7)
-const loaderUtils = __webpack_require__(8)
-const { getParseBase64Promise } = __webpack_require__(9)
-const { parseStyleUrl } = __webpack_require__(12)
-const Transformer = __webpack_require__(17)
+const { getParseBase64Promise } = __webpack_require__(8)
+const { parseStyleUrl } = __webpack_require__(11)
+const Transformer = __webpack_require__(16)
 
 class CssTransformer extends Transformer {
   init() {
     if (this.meta && this.meta.ast && this.meta.ast.type === 'postcss' && this.meta.ast.root) {
       this.root = this.meta.ast.root
     } else {
-      this.root = postcss.parse(this.code)
+      this.root = postcss.parse(this.code, { from: this.filename, map: this.map })
     }
   }
 
@@ -347,9 +346,7 @@ class CssTransformer extends Transformer {
           })
           transformList[i].node.value = newCode
         })
-
-        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader) || undefined)
-
+        const result = this.root.toResult({ map: { prev: this.map, inline: false } })
         result.meta = {
           ast: {
             type: "postcss",
@@ -357,7 +354,6 @@ class CssTransformer extends Transformer {
             root: result.root
           }
         }
-
         return result
       })
   }
@@ -374,20 +370,13 @@ module.exports = require("postcss");;
 
 /***/ }),
 /* 8 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("loader-utils");;
-
-/***/ }),
-/* 9 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const http = __webpack_require__(10)
-const https = __webpack_require__(11)
-const { getUrlFullInfo } = __webpack_require__(12)
+const http = __webpack_require__(9)
+const https = __webpack_require__(10)
+const { getUrlFullInfo } = __webpack_require__(11)
 const core = __webpack_require__(1)
-const logger = __webpack_require__(13)
+const logger = __webpack_require__(12)
 
 const sourceCache = new Map()
 
@@ -471,21 +460,21 @@ module.exports = {
 }
 
 /***/ }),
-/* 10 */
+/* 9 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("http");;
 
 /***/ }),
-/* 11 */
+/* 10 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("https");;
 
 /***/ }),
-/* 12 */
+/* 11 */
 /***/ ((module) => {
 
 const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#%`
@@ -653,12 +642,12 @@ module.exports = {
 }
 
 /***/ }),
-/* 13 */
+/* 12 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const path = __webpack_require__(14)
-const fs = __webpack_require__(15)
-const winston = __webpack_require__(16)
+const path = __webpack_require__(13)
+const fs = __webpack_require__(14)
+const winston = __webpack_require__(15)
 const core = __webpack_require__(1)
 
 // const dirname = path.resolve(process.cwd(), 'esrtlogs')
@@ -787,33 +776,33 @@ Object.keys(levels).forEach(method => {
 module.exports = logger
 
 /***/ }),
-/* 14 */
+/* 13 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("path");;
 
 /***/ }),
-/* 15 */
+/* 14 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("fs");;
 
 /***/ }),
-/* 16 */
+/* 15 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("winston");;
 
 /***/ }),
-/* 17 */
+/* 16 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const path = __webpack_require__(14)
+const path = __webpack_require__(13)
 const core = __webpack_require__(1)
-const logger = __webpack_require__(13)
+const logger = __webpack_require__(12)
 
 class Transformer {
   constructor({ code, map, meta, filename, parent, loader, plugin }, options = core.options) {
@@ -825,7 +814,21 @@ class Transformer {
     this.options = options
     this.loader = loader
     this.plugin = plugin
+    this.setFilename(filename)
     this.init()
+  }
+
+  setFilename(filename) {
+    if (!filename) {
+      if (this.loader) {
+        filename = this.loader.resourcePath
+      } else if (this.plugin) {
+        filename = this.plugin.options.template.split('!').slice(-1)[0]
+      } else {
+        filename = `temp-${Date.now()}`
+      }
+    }
+    this.filename = filename
   }
 
   init() {}
@@ -847,26 +850,26 @@ class Transformer {
 module.exports = Transformer
 
 /***/ }),
-/* 18 */
+/* 17 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const factory = __webpack_require__(3)
-const TsTransformer = __webpack_require__(19)
+const TsTransformer = __webpack_require__(18)
 
 module.exports = factory(TsTransformer)
 
 /***/ }),
-/* 19 */
+/* 18 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const ts = __webpack_require__(5)
-const TsProcessor = __webpack_require__(20)
-const { transformCgi } = __webpack_require__(12)
+const TsProcessor = __webpack_require__(19)
+const { transformCgi } = __webpack_require__(11)
 const {
   getParseBase64Promise,
-} = __webpack_require__(9)
+} = __webpack_require__(8)
 const { printNode } = __webpack_require__(4)
-const Transformer = __webpack_require__(17)
+const Transformer = __webpack_require__(16)
 const core = __webpack_require__(1)
 
 class TsTransformer extends Transformer {
@@ -962,18 +965,18 @@ class TsTransformer extends Transformer {
 module.exports = TsTransformer
 
 /***/ }),
-/* 20 */
+/* 19 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const ts = __webpack_require__(5)
-const { getUrlFullInfo, execStyleUrl } = __webpack_require__(12)
+const { getUrlFullInfo, execStyleUrl } = __webpack_require__(11)
 const {
   getAccess,
   isMatchAccess,
   isIgnoreAccess,
   printNode
 } = __webpack_require__(4)
-const Changeset = __webpack_require__(21)
+const Changeset = __webpack_require__(20)
 const core = __webpack_require__(1)
 
 const keywords = 'align-content align-items align-self all animation animation-delay animation-direction animation-duration animation-fill-mode animation-iteration-count animation-name animation-play-state animation-timing-function backface-visibility background background-attachment background-blend-mode background-clip background-color background-image background-origin background-position background-repeat background-size border border-bottom border-bottom-color border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width border-collapse border-color border-image border-image-outset border-image-repeat border-image-slice border-image-source border-image-width border-left border-left-color border-left-style border-left-width border-radius border-right border-right-color border-right-style border-right-width border-spacing border-style border-top border-top-color border-top-left-radius border-top-right-radius border-top-style border-top-width border-width bottom box-decoration-break box-shadow box-sizing break-after break-before break-inside caption-side caret-color @charset clear clip color column-count column-fill column-gap column-rule column-rule-color column-rule-style column-rule-width column-span column-width columns content counter-increment counter-reset cursor direction display empty-cells filter flex flex-basis flex-direction flex-flow flex-grow flex-shrink flex-wrap float font @font-face font-family font-feature-settings @font-feature-values font-kerning font-language-override font-size font-size-adjust font-stretch font-style font-synthesis font-variant font-variant-alternates font-variant-caps font-variant-east-asian font-variant-ligatures font-variant-numeric font-variant-position font-weight grid grid-area grid-auto-columns grid-auto-flow grid-auto-rows grid-column grid-column-end grid-column-gap grid-column-start grid-gap grid-row grid-row-end grid-row-gap grid-row-start grid-template grid-template-areas grid-template-columns grid-template-rows hanging-punctuation height hyphens image-rendering @import isolation justify-content @keyframes left letter-spacing line-break line-height list-style list-style-image list-style-position list-style-type margin margin-bottom margin-left margin-right margin-top max-height max-width @media min-height min-width mix-blend-mode object-fit object-position opacity order orphans outline outline-color outline-offset outline-style outline-width overflow overflow-wrap overflow-x overflow-y padding padding-bottom padding-left padding-right padding-top page-break-after page-break-before page-break-inside perspective perspective-origin pointer-events position quotes resize right scroll-behavior tab-size table-layout text-align text-align-last text-combine-upright text-decoration text-decoration-color text-decoration-line text-decoration-style text-indent text-justify text-orientation text-overflow text-shadow text-transform text-underline-position top transform transform-origin transform-style transition transition-delay transition-duration transition-property transition-timing-function unicode-bidi user-select vertical-align visibility white-space widows width word-break word-spacing word-wrap writing-mode z-index box-orient box-align box-pack'.split(' ')
@@ -1186,7 +1189,7 @@ class TsProcessor {
 module.exports = TsProcessor
 
 /***/ }),
-/* 21 */
+/* 20 */
 /***/ ((module) => {
 
 class Changeset {
@@ -1254,16 +1257,16 @@ class Changeset {
 module.exports = Changeset
 
 /***/ }),
-/* 22 */
+/* 21 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // If your plugin is direct dependent to the html webpack plugin:
-const HtmlWebpackPlugin = __webpack_require__(23)
+const HtmlWebpackPlugin = __webpack_require__(22)
 // If your plugin is using html-webpack-plugin as an optional dependency
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
-const HtmlTransformer = __webpack_require__(24)
-const logger = __webpack_require__(13)
+const HtmlTransformer = __webpack_require__(23)
+const logger = __webpack_require__(12)
 
 class HtmlWebpackESRTPlugin {
   apply(compiler) {
@@ -1284,34 +1287,34 @@ module.exports = HtmlWebpackESRTPlugin
 
 
 /***/ }),
-/* 23 */
+/* 22 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("html-webpack-plugin");;
 
 /***/ }),
-/* 24 */
+/* 23 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 var __dirname = "src/core/transformer";
-const htmlparser2 = __webpack_require__(25)
-const domSerializer = __webpack_require__(26)
-const domHandler = __webpack_require__(27)
+const htmlparser2 = __webpack_require__(24)
+const domSerializer = __webpack_require__(25)
+const domHandler = __webpack_require__(26)
 const {
   getParseBase64Promise,
   getParseJsPromise
-} = __webpack_require__(9)
+} = __webpack_require__(8)
 const {
   testUrl,
   parseStyleUrl,
   execStyleUrl
-} = __webpack_require__(12)
-const Transformer = __webpack_require__(17)
-const TsTransformer = __webpack_require__(19)
+} = __webpack_require__(11)
+const Transformer = __webpack_require__(16)
+const TsTransformer = __webpack_require__(18)
 const CssTransformer = __webpack_require__(6)
-const fs = __webpack_require__(15)
-const path = __webpack_require__(14)
+const fs = __webpack_require__(14)
+const path = __webpack_require__(13)
 const core = __webpack_require__(1)
 
 const addNode = (node, parent, type = 'prepend') => {
@@ -1368,12 +1371,6 @@ class HtmlTransformer extends Transformer {
 
   init() {
     this.root = htmlparser2.parseDocument(this.code)
-    if (this.plugin) {
-      const filename = this.plugin.options.template.split('!').slice(-1)[0]
-      if (filename) {
-        this.filename = path.relative(core.options.context || process.cwd(), filename)
-      }
-    }
   }
 
   dfs(node, handler) {
@@ -1488,21 +1485,21 @@ class HtmlTransformer extends Transformer {
 module.exports = HtmlTransformer
 
 /***/ }),
-/* 25 */
+/* 24 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("htmlparser2");;
 
 /***/ }),
-/* 26 */
+/* 25 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("dom-serializer");;
 
 /***/ }),
-/* 27 */
+/* 26 */
 /***/ ((module) => {
 
 "use strict";
