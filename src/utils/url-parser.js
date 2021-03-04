@@ -26,7 +26,7 @@ const URL_ORIGIN_NO_GROUP = `(${URL_REGS.protocol}${URL_REGS.host})`
 const URL_SEARCH_NO_GROUP = `(${URL_REGS.hash}|${URL_REGS.search})`
 const URL_TAIL_NO_GROUP = `(${URL_REGS.pathname}${URL_SEARCH_NO_GROUP}?|${URL_SEARCH_NO_GROUP})`
 const URL_REG_NO_GROUP = new RegExp(`(${URL_ORIGIN_NO_GROUP}${URL_TAIL_NO_GROUP}?)|(${URL_TAIL_NO_GROUP})`, 'i')
-const URL_REG_NO_GROUP_ALL = new RegExp(`^${URL_REG_NO_GROUP.source}$`, URL_REG.flags)
+const URL_REG_NO_GROUP_ALL = new RegExp(`^(${URL_REG_NO_GROUP.source})$`, URL_REG.flags)
 
 const testUrl = (str, all) => str && (all ? URL_REG_NO_GROUP_ALL : URL_REG_NO_GROUP).test(str)
 
@@ -44,13 +44,15 @@ const execUrlNormalize = (groups, options = {}) => {
           groups[key] = protocol
         }
       } else {
-        const protocolWidthSlash = defaultProtocol + '://'
         groups[key] = defaultProtocol
-        if (groups.host) {
-          // host exist
-          groups.origin = protocolWidthSlash + groups.origin
-          groups.href = protocolWidthSlash + groups.href
-        }
+
+        // if host exist, protocol must not be empty
+        // const protocolWidthSlash = defaultProtocol + '://'
+        // if (groups.host) {
+        //   // host exist
+        //   groups.origin = protocolWidthSlash + groups.origin
+        //   groups.href = protocolWidthSlash + groups.href
+        // }
       }
     } else if (key === 'host') {
       if (groups[key] !== undefined) {
@@ -87,7 +89,7 @@ const getUrlFullInfo = (str, incomplete, options = {}) => {
   const location = parseUrl(str, options)
   if (!location || !location.host && !location.pathname) return null
   location.ext = ''
-  location.inside = !location.host && location.pathname || options.origins && options.origins.includes(location.origin)
+  location.inside = !!(!location.host && location.pathname || options.origins && options.origins.includes(location.origin))
   // empty ext regarded as source, though cgi
   if (!incomplete) {
     location.ext = (/\.([0-0a-z]+)$/i.exec(location.pathname) || [])[1] || ''
@@ -125,14 +127,15 @@ const execStyleUrl = (str, test) => getExecResult(str, URL_STYLE_REG, (cur) => !
 const transformCgi = (url, options = {}) => {
   // use options
   if (typeof options.transformCgi === 'function') return options.transformCgi(url)
+  if (!url) return ''
   let urlObj = url
   if (typeof url === 'object') {
     url = url.href || ''
   } else if (typeof url === 'string') {
     urlObj = getUrlFullInfo(url, true, options)
   } else {
-    console.error(`esrt transformCgi error! ${typeof url}`)
-    console.error(url)
+    // console.error(`esrt transformCgi error! ${typeof url}`)
+    // console.error(url)
     throw new Error('url`s type must be object or string!')
   }
   // not url
@@ -154,7 +157,6 @@ const transformCgi = (url, options = {}) => {
 
 module.exports = {
   testUrl,
-  parseUrl,
   getUrlFullInfo,
   parseStyleUrl,
   execUrl,

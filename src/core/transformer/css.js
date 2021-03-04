@@ -15,6 +15,7 @@ class CssTransformer extends Transformer {
   transformAsync() {
     const transformList = []
     this.root.walkDecls(node => {
+      // todo: consider multiple url
       const res = parseStyleUrl(node.value, true)
       if (!res) return
       transformList.push({

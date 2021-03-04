@@ -10,7 +10,8 @@
     "test:prod": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index",
     "inject:dev": "NODE_ENV=development node --trace-deprecation src/inject",
     "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject",
-    "commit": "yarn inject:prod && yarn build && git push remote master && git push origin master && tnpm version patch && tnpm publish"
+    "commit": "yarn inject:prod && yarn build && git push remote master && git push origin master && tnpm version patch && tnpm publish",
+    "jest": "jest -c test/jest.config.js"
   },
   "keywords": [
     "html-webpack-plugin",
@@ -44,7 +45,10 @@
     "css-loader": "^5.0.1",
     "cssnano": "^4.1.10",
     "express": "^4.17.1",
+    "html-webpack-plugin": "^4.5.1",
+    "jest": "^27.0.0-next.1",
     "less-loader": "^7.3.0",
+    "postcss": "^7.0.0",
     "postcss-flexbugs-fixes": "^5.0.2",
     "postcss-loader": "^4.2.0",
     "postcss-preset-env": "^6.7.0",
@@ -62,9 +66,7 @@
     "webpack-cli": "^4.5.0",
     "webpack-dev-server": "^3.11.2",
     "webpack-node-externals": "^2.5.2",
-    "write-file-webpack-plugin": "^4.5.1",
-    "html-webpack-plugin": "^4.5.1",
-    "postcss": "^7.0.0"
+    "write-file-webpack-plugin": "^4.5.1"
   },
   "peerDependencies": {
     "html-webpack-plugin": ">=4.0.0",
