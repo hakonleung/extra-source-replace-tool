@@ -27,11 +27,18 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   }
   // use cache
   if (data) return onEnd()
-  logger.info(fullInfo.protocol, `from: ${url}`, `to: ${fullInfo.href}`)
+  logger.info({
+    type: fullInfo.protocol,
+    code: url,
+    transformed: fullInfo.href
+  })
   let retryTimes = 0
-  const getErrorCallback = (req) => (err) => {
-    logger.error(fullInfo.protocol, `retryTimes: ${retryTimes}`)
-    logger.error(fullInfo.protocol, err)
+  const getErrorCallback = (req) => (error) => {
+    logger.error({
+      type: fullInfo.protocol,
+      error,
+      info: `retryTimes: ${retryTimes}`
+    })
     req && req.abort()
     if ((retryTimes += 1) <= core.options.requestRetryTimes) {
       fetch()

@@ -3,9 +3,7 @@ const TsProcessor = require('../processor/ts')
 const { transformCgi } = require('../../utils/url-parser')
 const {
   getParseBase64Promise,
-  getParseJsPromise
 } = require('../../utils/http')
-const logger = require('../../utils/logger')
 const { printNode } = require('../../utils/ast')
 const Transformer = require('.')
 const core = require('../')
@@ -88,7 +86,10 @@ class TsTransformer extends Transformer {
         }
         const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
         const newCode = cs.target
-        logger.info('ts', `file: ${this.filename}`, `from: ${oldCode.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+        this.log({
+          code: oldCode,
+          transformed: newCode
+        })
         transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
         diff += newCode.length - cs.end + cs.start
       })

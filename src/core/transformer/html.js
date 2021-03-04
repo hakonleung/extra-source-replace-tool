@@ -5,7 +5,6 @@ const {
   getParseBase64Promise,
   getParseJsPromise
 } = require('../../utils/http')
-const logger = require('../../utils/logger')
 const {
   testUrl,
   parseStyleUrl,
@@ -41,21 +40,27 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static getInjectJs() {
+  static getInjectJs(instance = { log: () => {} }) {
     if (!core.options.injectBlockMethod) return null
     if (!HtmlTransformer.injectJsCache) {
       try {
         const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
         HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
-      } catch (err) {
-        logger.error('html inject', err)
+        instance.log({
+          info: 'inject success!'
+        })
+      } catch (error) {
+        instance.log({
+          error,
+          info: 'inject error!'
+        }, 'error')
       }
     }
     return HtmlTransformer.injectJsCache || null
   }
 
   injectJs(head) {
-    const js = HtmlTransformer.getInjectJs()
+    const js = HtmlTransformer.getInjectJs(this)
     if (!js) return
     if (!head) {
       head = new domHandler.Element('head')
@@ -66,6 +71,12 @@ class HtmlTransformer extends Transformer {
 
   init() {
     this.root = htmlparser2.parseDocument(this.code)
+    if (this.plugin) {
+      const filename = this.plugin.options.template.split('!').slice(-1)[0]
+      if (filename) {
+        this.filename = path.relative(core.options.context || process.cwd(), filename)
+      }
+    }
   }
 
   dfs(node, handler) {
@@ -120,7 +131,11 @@ class HtmlTransformer extends Transformer {
         .then(res => res.forEach((v, i) => {
           if (!v) return
           const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
-          logger.info('html styleAttr => styleAttr', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          this.log({
+            from: 'tag attr style',
+            code: node.attribs[attr],
+            transformed: newCode
+          })
           node.attribs[attr] = newCode
         }))
     } else if (attr) {
@@ -128,7 +143,12 @@ class HtmlTransformer extends Transformer {
         // js src
         return getParseJsPromise(node.attribs[attr]).then(v => {
           if (!v) return
-          logger.info('html script.src => script.text', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
+          this.log({
+            from: 'script attr src',
+            to: 'script innerText',
+            code: node.attribs[attr],
+            transformed: v
+          })
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
           delete node.attribs[attr]
@@ -137,14 +157,17 @@ class HtmlTransformer extends Transformer {
         // other link
         return getParseBase64Promise(node.attribs[attr]).then(v => {
           if (!v) return
-          logger.info('html link => link', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
+          this.log({
+            from: 'tag attr href',
+            code: node.attribs[attr],
+            transformed: v
+          })
           node.attribs[attr] = v
         })
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
-      logger.info('html', node.name, '⇩⇩⇩⇩')
-      return new transformer({ code: text })
+      return new transformer({ code: text, parent: this.filename })
         .transformAsync()
         .then(res => {
           const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
@@ -157,8 +180,10 @@ class HtmlTransformer extends Transformer {
     const items = this.traverse().map(item => this.genPromise(item))
     return Promise.all(items)
       .then(() => domSerializer.default(this.root))
-      .catch(err => {
-        logger.error('html', err)
+      .catch(error => {
+        this.log({
+          error
+        })
       })
   }
 }

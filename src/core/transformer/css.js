@@ -1,7 +1,6 @@
 const postcss = require('postcss')
 const loaderUtils = require('loader-utils')
 const { getParseBase64Promise } = require('../../utils/http')
-const logger = require('../../utils/logger')
 const { parseStyleUrl } = require('../../utils/url-parser')
 const Transformer = require('.')
 
@@ -32,7 +31,10 @@ class CssTransformer extends Transformer {
         values.forEach((v, i) => {
           if (!v) return
           const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
-          logger.info('css', `from: ${transformList[i].node.value.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          this.log({
+            code: transformList[i].node.value,
+            transformed: newCode
+          })
           transformList[i].node.value = newCode
         })
 

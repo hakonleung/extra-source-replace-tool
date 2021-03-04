@@ -61,7 +61,9 @@ const DEFAULT_OPTIONS = {
   injectBlockMethod: false,
   requestTimeout: 3000,
   requestRetryTimes: 3,
-  loggerTransports: ['file']
+  loggerTransports: ['file'],
+  loggerCodeLength: 100,
+  loggerDataToJson: true,
 }
 
 const DEFAULT_OPTION_MAP = {
@@ -133,7 +135,7 @@ module.exports = (Transformer, options = {}) => {
     if (options.nocache && typeof this.cacheable === 'function') {
       this.cacheable(false)
     }
-    const transformer = new Transformer({ code, map, meta, filename }, this)
+    const transformer = new Transformer({ code, map, meta, filename, loader: this })
     if (options.sync) {
       return transformer.transform()
     }
@@ -309,7 +311,6 @@ module.exports = require("typescript");;
 const postcss = __webpack_require__(7)
 const loaderUtils = __webpack_require__(8)
 const { getParseBase64Promise } = __webpack_require__(9)
-const logger = __webpack_require__(13)
 const { parseStyleUrl } = __webpack_require__(12)
 const Transformer = __webpack_require__(17)
 
@@ -340,7 +341,10 @@ class CssTransformer extends Transformer {
         values.forEach((v, i) => {
           if (!v) return
           const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
-          logger.info('css', `from: ${transformList[i].node.value.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          this.log({
+            code: transformList[i].node.value,
+            transformed: newCode
+          })
           transformList[i].node.value = newCode
         })
 
@@ -408,11 +412,18 @@ const httpGet = (url, cb) => new Promise((resolve, reject) => {
   }
   // use cache
   if (data) return onEnd()
-  logger.info(fullInfo.protocol, `from: ${url}`, `to: ${fullInfo.href}`)
+  logger.info({
+    type: fullInfo.protocol,
+    code: url,
+    transformed: fullInfo.href
+  })
   let retryTimes = 0
-  const getErrorCallback = (req) => (err) => {
-    logger.error(fullInfo.protocol, `retryTimes: ${retryTimes}`)
-    logger.error(fullInfo.protocol, err)
+  const getErrorCallback = (req) => (error) => {
+    logger.error({
+      type: fullInfo.protocol,
+      error,
+      info: `retryTimes: ${retryTimes}`
+    })
     req && req.abort()
     if ((retryTimes += 1) <= core.options.requestRetryTimes) {
       fetch()
@@ -652,7 +663,8 @@ const core = __webpack_require__(1)
 
 // const dirname = path.resolve(process.cwd(), 'esrtlogs')
 // if (fs.existsSync(filename)) fs.unlinkSync(filename)
-const filename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}.log`)
+const basename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}`)
+const filename = basename + '.log'
 
 function formateDate() {
   const now = new Date()
@@ -692,6 +704,14 @@ const logger = winston.createLogger({
   format: winston.format.simple(),
   transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
 })
+logger.__logDataCache = {}
+logger.callback = () => {
+  if (!core.options.loggerDataToJson) return
+  fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
+      if (err) throw err
+      console.log('Data written to file')
+  });
+}
 
 const levels = {
   error: 0,
@@ -703,15 +723,66 @@ const levels = {
   silly: 6
 }
 
-const wrapper = (f) => (...args) => {
-  return f.call(logger, ['[ESRT]', ...args].join(' ** '))
+const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, core.options.loggerCodeLength)
+
+const cacheLogData = (data) => {
+  if (!core.options.loggerDataToJson) return
+  const { type, filename, parent } = data
+  const key = parent || filename
+  const newData = { ...data }
+  delete newData.parent
+  delete newData.filename
+  if (!key) {
+    delete newData.type
+    if (!logger.__logDataCache[type]) {
+      logger.__logDataCache[type] = []
+    }
+    logger.__logDataCache[type].push(newData)
+    return
+  }
+  if (!logger.__logDataCache[type]) {
+    logger.__logDataCache[type] = {}
+  }
+  newData.type = parent ? 'child' : 'current'
+  if (logger.__logDataCache[type][key]) {
+    logger.__logDataCache[type][key].push(newData)
+  } else {
+    logger.__logDataCache[type][key] = [newData]
+  }
+}
+
+const wrapper = (f) => (data) => {
+  cacheLogData(data)
+  const { type, filename, parent, from, to, code, transformed, error, info } = data
+  const arr = ['']
+  if (parent) {
+    arr.push(`parent: ${parent}`)
+  } else if (filename) {
+    arr.push(`current: ${filename}`)
+  }
+  if (from) {
+    arr.push(`${from} => ${to || from}`)
+  }
+  if (code) {
+    arr.push(`code: ${formatCode(code)}`)
+  }
+  if (transformed) {
+    arr.push(`transformed: ${formatCode(transformed)}`)
+  }
+  if (error) {
+    arr.push(error)
+  } 
+  if (info) {
+    arr.push(info)
+  }
+  const tag = `[ESRT-${type}]`
+  return f.call(logger, arr.join(`\n${tag}`))
 }
 
 Object.keys(levels).forEach(method => {
   const f = logger[method]
   logger[method] = wrapper(f)
 })
-
 
 module.exports = logger
 
@@ -742,14 +813,18 @@ module.exports = require("winston");;
 
 const path = __webpack_require__(14)
 const core = __webpack_require__(1)
+const logger = __webpack_require__(13)
 
 class Transformer {
-  constructor({ code, map, meta, filename }, loader, options = core.options) {
+  constructor({ code, map, meta, filename, parent, loader, plugin }, options = core.options) {
     this.code = code
     this.map = map
+    this.meta = meta
     this.filename = filename ? path.relative(options.context || process.cwd(), filename) : `temp-${Date.now()}`
+    this.parent = parent
     this.options = options
     this.loader = loader
+    this.plugin = plugin
     this.init()
   }
 
@@ -758,6 +833,15 @@ class Transformer {
   transform() {}
 
   async transformAsync() {}
+
+  log(options, type = 'info') {
+    logger[type] && logger[type]({
+      ...options,
+      filename: this.filename,
+      parent: this.parent,
+      type: this.__proto__.constructor.name.replace('Transformer', '').toLowerCase()
+    })
+  }
 }
 
 module.exports = Transformer
@@ -780,9 +864,7 @@ const TsProcessor = __webpack_require__(20)
 const { transformCgi } = __webpack_require__(12)
 const {
   getParseBase64Promise,
-  getParseJsPromise
 } = __webpack_require__(9)
-const logger = __webpack_require__(13)
 const { printNode } = __webpack_require__(4)
 const Transformer = __webpack_require__(17)
 const core = __webpack_require__(1)
@@ -865,7 +947,10 @@ class TsTransformer extends Transformer {
         }
         const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
         const newCode = cs.target
-        logger.info('ts', `file: ${this.filename}`, `from: ${oldCode.slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+        this.log({
+          code: oldCode,
+          transformed: newCode
+        })
         transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
         diff += newCode.length - cs.end + cs.start
       })
@@ -1178,15 +1263,17 @@ const HtmlWebpackPlugin = __webpack_require__(23)
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = __webpack_require__(24)
+const logger = __webpack_require__(13)
 
 class HtmlWebpackESRTPlugin {
   apply(compiler) {
     compiler.hooks.compilation.tap('ESRTPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
         'ESRTPlugin',
-        (data, cb) => new HtmlTransformer({ code: data.html })
+        (data, cb) => new HtmlTransformer({ code: data.html, plugin: data.plugin })
           .transformAsync()
           .then(html => cb(null, { ...data, html }))
+          .then(() => logger.callback())
           .catch(e => cb(e))
       )
     })
@@ -1215,7 +1302,6 @@ const {
   getParseBase64Promise,
   getParseJsPromise
 } = __webpack_require__(9)
-const logger = __webpack_require__(13)
 const {
   testUrl,
   parseStyleUrl,
@@ -1251,21 +1337,27 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static getInjectJs() {
+  static getInjectJs(instance = { log: () => {} }) {
     if (!core.options.injectBlockMethod) return null
     if (!HtmlTransformer.injectJsCache) {
       try {
         const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
         HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
-      } catch (err) {
-        logger.error('html inject', err)
+        instance.log({
+          info: 'inject success!'
+        })
+      } catch (error) {
+        instance.log({
+          error,
+          info: 'inject error!'
+        }, 'error')
       }
     }
     return HtmlTransformer.injectJsCache || null
   }
 
   injectJs(head) {
-    const js = HtmlTransformer.getInjectJs()
+    const js = HtmlTransformer.getInjectJs(this)
     if (!js) return
     if (!head) {
       head = new domHandler.Element('head')
@@ -1276,6 +1368,12 @@ class HtmlTransformer extends Transformer {
 
   init() {
     this.root = htmlparser2.parseDocument(this.code)
+    if (this.plugin) {
+      const filename = this.plugin.options.template.split('!').slice(-1)[0]
+      if (filename) {
+        this.filename = path.relative(core.options.context || process.cwd(), filename)
+      }
+    }
   }
 
   dfs(node, handler) {
@@ -1330,7 +1428,11 @@ class HtmlTransformer extends Transformer {
         .then(res => res.forEach((v, i) => {
           if (!v) return
           const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
-          logger.info('html styleAttr => styleAttr', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${newCode.slice(0, 66)}...`)
+          this.log({
+            from: 'tag attr style',
+            code: node.attribs[attr],
+            transformed: newCode
+          })
           node.attribs[attr] = newCode
         }))
     } else if (attr) {
@@ -1338,7 +1440,12 @@ class HtmlTransformer extends Transformer {
         // js src
         return getParseJsPromise(node.attribs[attr]).then(v => {
           if (!v) return
-          logger.info('html script.src => script.text', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
+          this.log({
+            from: 'script attr src',
+            to: 'script innerText',
+            code: node.attribs[attr],
+            transformed: v
+          })
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
           delete node.attribs[attr]
@@ -1347,14 +1454,17 @@ class HtmlTransformer extends Transformer {
         // other link
         return getParseBase64Promise(node.attribs[attr]).then(v => {
           if (!v) return
-          logger.info('html link => link', `from: ${node.attribs[attr].slice(0, 66)}...`, `to: ${v.slice(0, 66)}...`)
+          this.log({
+            from: 'tag attr href',
+            code: node.attribs[attr],
+            transformed: v
+          })
           node.attribs[attr] = v
         })
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
-      logger.info('html', node.name, '⇩⇩⇩⇩')
-      return new transformer({ code: text })
+      return new transformer({ code: text, parent: this.filename })
         .transformAsync()
         .then(res => {
           const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
@@ -1367,8 +1477,10 @@ class HtmlTransformer extends Transformer {
     const items = this.traverse().map(item => this.genPromise(item))
     return Promise.all(items)
       .then(() => domSerializer.default(this.root))
-      .catch(err => {
-        logger.error('html', err)
+      .catch(error => {
+        this.log({
+          error
+        })
       })
   }
 }

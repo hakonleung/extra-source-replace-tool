@@ -9,7 +9,7 @@ module.exports = (Transformer, options = {}) => {
     if (options.nocache && typeof this.cacheable === 'function') {
       this.cacheable(false)
     }
-    const transformer = new Transformer({ code, map, meta, filename }, this)
+    const transformer = new Transformer({ code, map, meta, filename, loader: this })
     if (options.sync) {
       return transformer.transform()
     }

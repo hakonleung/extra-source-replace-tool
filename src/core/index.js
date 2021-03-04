@@ -24,7 +24,9 @@ const DEFAULT_OPTIONS = {
   injectBlockMethod: false,
   requestTimeout: 3000,
   requestRetryTimes: 3,
-  loggerTransports: ['file']
+  loggerTransports: ['file'],
+  loggerCodeLength: 100,
+  loggerDataToJson: true,
 }
 
 const DEFAULT_OPTION_MAP = {
