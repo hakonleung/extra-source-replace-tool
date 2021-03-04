@@ -71,12 +71,6 @@ class HtmlTransformer extends Transformer {
 
   init() {
     this.root = htmlparser2.parseDocument(this.code)
-    if (this.plugin) {
-      const filename = this.plugin.options.template.split('!').slice(-1)[0]
-      if (filename) {
-        this.filename = path.relative(core.options.context || process.cwd(), filename)
-      }
-    }
   }
 
   dfs(node, handler) {

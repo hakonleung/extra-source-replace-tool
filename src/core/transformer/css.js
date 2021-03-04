@@ -1,5 +1,4 @@
 const postcss = require('postcss')
-const loaderUtils = require('loader-utils')
 const { getParseBase64Promise } = require('../../utils/http')
 const { parseStyleUrl } = require('../../utils/url-parser')
 const Transformer = require('.')
@@ -9,7 +8,7 @@ class CssTransformer extends Transformer {
     if (this.meta && this.meta.ast && this.meta.ast.type === 'postcss' && this.meta.ast.root) {
       this.root = this.meta.ast.root
     } else {
-      this.root = postcss.parse(this.code)
+      this.root = postcss.parse(this.code, { from: this.filename, map: this.map })
     }
   }
 
@@ -37,9 +36,7 @@ class CssTransformer extends Transformer {
           })
           transformList[i].node.value = newCode
         })
-
-        const result = postcss().process(this.root, this.loader && loaderUtils.getOptions(this.loader) || undefined)
-
+        const result = this.root.toResult({ map: { prev: this.map, inline: false } })
         result.meta = {
           ast: {
             type: "postcss",
@@ -47,7 +44,6 @@ class CssTransformer extends Transformer {
             root: result.root
           }
         }
-
         return result
       })
   }

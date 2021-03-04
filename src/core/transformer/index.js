@@ -12,7 +12,21 @@ class Transformer {
     this.options = options
     this.loader = loader
     this.plugin = plugin
+    this.setFilename(filename)
     this.init()
+  }
+
+  setFilename(filename) {
+    if (!filename) {
+      if (this.loader) {
+        filename = this.loader.resourcePath
+      } else if (this.plugin) {
+        filename = this.plugin.options.template.split('!').slice(-1)[0]
+      } else {
+        filename = `temp-${Date.now()}`
+      }
+    }
+    this.filename = filename
   }
 
   init() {}

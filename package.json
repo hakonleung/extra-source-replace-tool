@@ -10,7 +10,7 @@
     "test:prod": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index",
     "inject:dev": "NODE_ENV=development node --trace-deprecation src/inject",
     "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject",
-    "commit": "yarn inject:prod && yarn build && git add . && git commit -m 'feat: t' && git push remote master && git push origin master && tnpm version patch && tnpm publish"
+    "commit": "yarn inject:prod && yarn build && git push remote master && git push origin master && tnpm version patch && tnpm publish"
   },
   "keywords": [
     "html-webpack-plugin",
@@ -25,7 +25,6 @@
     "htmlparser2": "^6.0.0",
     "http": "0.0.1-security",
     "https": "^1.0.0",
-    "loader-utils": "^2.0.0",
     "typescript": "^4.1.3",
     "winston": "^3.3.3"
   },
@@ -64,11 +63,13 @@
     "webpack-dev-server": "^3.11.2",
     "webpack-node-externals": "^2.5.2",
     "write-file-webpack-plugin": "^4.5.1",
-    "html-webpack-plugin": "^4.5.1"
+    "html-webpack-plugin": "^4.5.1",
+    "postcss": "^7.0.0"
   },
   "peerDependencies": {
     "html-webpack-plugin": ">=4.0.0",
-    "webpack": ">=4.0.0"
+    "webpack": ">=4.0.0",
+    "postcss": "^7.0.0"
   },
   "author": "hakon",
   "license": "ISC",
