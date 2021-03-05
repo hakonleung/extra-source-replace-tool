@@ -10,7 +10,7 @@
     "test:prod": "rm -rf test/dist && NODE_ENV=production TS_NODE_PROJECT=test/tsconfig.json node -r ts-node/register test/webpack/index",
     "inject:dev": "NODE_ENV=development node --trace-deprecation src/inject",
     "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject",
-    "commit": "yarn inject:prod && yarn build && git push remote master && git push origin master && npm version patch && npm publish",
+    "publish": "git push remote master && git push origin master && npm version patch && npm publish",
     "jest": "jest -c test/jest.config.js",
     "prepare": "husky install"
   },

@@ -1,18 +1,6 @@
 const core = require('core/index')
-const {
-  testUrl,
-  getUrlFullInfo,
-  parseStyleUrl,
-  execStyleUrl,
-  transformCgi
-} = require('utils/url-parser')
-const {
-  href,
-  invalidUrls,
-  coreOptions,
-  validSources,
-  invalidSources
-} = require('../data')
+const { testUrl, getUrlFullInfo, parseStyleUrl, execStyleUrl, transformCgi } = require('utils/url-parser')
+const { href, invalidUrls, coreOptions, validSources, invalidSources } = require('test/data')
 
 describe('url-parser', () => {
   // toMatchObject
@@ -22,7 +10,7 @@ describe('url-parser', () => {
   })
 
   test('getUrlFullInfo', () => {
-    invalidUrls.forEach(str => {
+    invalidUrls.forEach((str) => {
       expect(getUrlFullInfo(str)).toBeNull()
     })
 
@@ -30,61 +18,61 @@ describe('url-parser', () => {
 
     expect(getUrlFullInfo('a/b', true, core.options)).toMatchObject({
       inside: true,
-      protocol: core.options.protocol
+      protocol: core.options.protocol,
     })
 
     expect(getUrlFullInfo('~a/b', true, core.options)).toMatchObject({
       inside: true,
-      protocol: core.options.protocol
+      protocol: core.options.protocol,
     })
 
     expect(getUrlFullInfo('//test.com/a/b', true, core.options)).toMatchObject({
       inside: true,
-      protocol: core.options.protocol
+      protocol: core.options.protocol,
     })
 
     expect(getUrlFullInfo('http://test.cn/a/b', true, core.options)).toMatchObject({
       inside: true,
-      protocol: 'http'
+      protocol: 'http',
     })
 
     expect(getUrlFullInfo('//test1.com/a/b', true, core.options)).toMatchObject({
       inside: false,
-      protocol: core.options.protocol
+      protocol: core.options.protocol,
     })
 
     expect(getUrlFullInfo('http://test1.cn/a/b', false, core.options)).toMatchObject({
       inside: false,
       protocol: 'http',
-      ext: ''
+      ext: '',
     })
 
     expect(getUrlFullInfo('http://test1.cn/a/b.c', true, core.options)).toMatchObject({
       inside: false,
       protocol: 'http',
-      ext: ''
+      ext: '',
     })
 
     expect(getUrlFullInfo('http://test1.cn/a/b.c', false, core.options)).toMatchObject({
       inside: false,
       protocol: 'http',
-      ext: 'c'
+      ext: 'c',
     })
   })
 
   test('parseStyleUrl', () => {
     expect(parseStyleUrl(`background: url(${validSources[0]})`)).toMatchObject({
       href: validSources[0],
-      origin: validSources[0]
+      origin: validSources[0],
     })
     expect(parseStyleUrl(`background: url('${validSources[0]}')`)).toMatchObject({
       href: validSources[0],
-      origin: `'${validSources[0]}'`
+      origin: `'${validSources[0]}'`,
     })
 
     expect(parseStyleUrl(`background: url('${validSources[0]}")`)).toBeNull()
 
-    invalidUrls.forEach(str => {
+    invalidUrls.forEach((str) => {
       expect(parseStyleUrl(str, true)).toBeNull()
     })
   })
@@ -92,15 +80,20 @@ describe('url-parser', () => {
   test('execStyleUrl', () => {
     expect(execStyleUrl(`background: url(${validSources[0]}); background: url(${validSources[0]})`)).toHaveLength(2)
 
-    expect(execStyleUrl(`background: url(${validSources[0]}); background: url(${invalidUrls[0]})`, true)).toHaveLength(1)
+    expect(execStyleUrl(`background: url(${validSources[0]}); background: url(${invalidUrls[0]})`, true)).toHaveLength(
+      1
+    )
 
     expect(execStyleUrl(`background: url(${invalidUrls.join('); background: url(')})`, true)).toHaveLength(0)
   })
 
   test('transformCgi', () => {
-    core.config({
-      transformCgi: url => 'test' + url
-    }, true)
+    core.config(
+      {
+        transformCgi: (url) => 'test' + url,
+      },
+      true
+    )
 
     expect(transformCgi('/a/c', core.options)).toBe(core.options.transformCgi('/a/c'))
 
@@ -127,19 +120,19 @@ describe('url-parser', () => {
     expect(transformCgi(invalidUrls[0], core.options)).toBe(invalidUrls[0])
 
     core.config({
-      blockIntraUrl: true
+      blockIntraUrl: true,
     })
 
     expect(transformCgi('/d/c', core.options)).toBe('')
 
     core.config({
-      blockPaths: ['/a/c']
+      blockPaths: ['/a/c'],
     })
 
     expect(transformCgi('/a/c', core.options)).toBe('')
 
     core.config({
-      blockExtraUrl: true
+      blockExtraUrl: true,
     })
 
     expect(transformCgi('//github.com/test', core.options)).toBe('')
