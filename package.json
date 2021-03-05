@@ -11,7 +11,8 @@
     "inject:dev": "NODE_ENV=development node --trace-deprecation src/inject",
     "inject:prod": "NODE_ENV=production node --trace-deprecation src/inject",
     "commit": "yarn inject:prod && yarn build && git push remote master && git push origin master && npm version patch && npm publish",
-    "jest": "jest -c test/jest.config.js"
+    "jest": "jest -c test/jest.config.js",
+    "prepare": "husky install"
   },
   "keywords": [
     "html-webpack-plugin",
@@ -28,7 +29,7 @@
   },
   "husky": {
     "hooks": {
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
+      "commit-msg": "exit 1 && commitlint -E HUSKY_GIT_PARAMS",
       "pre-commit": "lint-staged"
     }
   },
