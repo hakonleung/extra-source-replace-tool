@@ -17,7 +17,7 @@ const core = __webpack_require__(1)
 const cssLoader = __webpack_require__(2)
 const tsLoader = __webpack_require__(17)
 const HtmlPlugin = __webpack_require__(21)
-const CssTransformer = __webpack_require__(6)
+const CssTransformer = __webpack_require__(10)
 const TsTransformer = __webpack_require__(18)
 const HtmlTransformer = __webpack_require__(23)
 
@@ -113,7 +113,7 @@ module.exports = core
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const factory = __webpack_require__(3)
-const CssTransformer = __webpack_require__(6)
+const CssTransformer = __webpack_require__(10)
 
 module.exports = factory(CssTransformer, {
   nocache: true
@@ -125,17 +125,19 @@ module.exports = factory(CssTransformer, {
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const { isIgnoreFile } = __webpack_require__(4)
+const core = __webpack_require__(1)
+const logger = __webpack_require__(6)
 
 module.exports = (Transformer, options = {}) => {
   return function (code, map, meta) {
     const filename = this.currentRequest.split('!').slice(-1)[0]
-    if (isIgnoreFile(code, map, filename)) {
+    if (isIgnoreFile(filename, code, map)) {
       return code
     }
     if (options.nocache && typeof this.cacheable === 'function') {
       this.cacheable(false)
     }
-    const transformer = new Transformer({ code, map, meta, filename, loader: this })
+    const transformer = new Transformer({ code, map, meta, filename, loader: this }, core.options, logger)
     if (options.sync) {
       return transformer.transform()
     }
@@ -143,9 +145,10 @@ module.exports = (Transformer, options = {}) => {
     transformer
       .transformAsync()
       .then((...res) => callback(null, ...res))
-      .catch(e => callback(e))
+      .catch((e) => callback(e))
   }
 }
+
 
 /***/ }),
 /* 4 */
@@ -155,7 +158,7 @@ const ts = __webpack_require__(5)
 const core = __webpack_require__(1)
 
 function stringPlusToTemplateExpression(exp) {
-  const isStringPlusExp = node => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
+  const isStringPlusExp = (node) => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
 
   if (!isStringPlusExp(exp)) return
   let canTransform = true
@@ -181,28 +184,30 @@ function stringPlusToTemplateExpression(exp) {
   ts.forEachChild(exp, visit)
   if (!canTransform || nodes.length < 2) return
 
-
   // 预处理：保证变量一定是字符串间隔的
-  const combined = nodes.reduce((pre, cur) => {
-    if (ts.isStringLiteral(cur)) {
-      if (typeof pre[pre.length - 1] === 'string') {
-        pre[pre.length - 1] += cur.text
+  const combined = nodes.reduce(
+    (pre, cur) => {
+      if (ts.isStringLiteral(cur)) {
+        if (typeof pre[pre.length - 1] === 'string') {
+          pre[pre.length - 1] += cur.text
+        } else {
+          pre.push(cur.text)
+        }
+      } else if (ts.isNoSubstitutionTemplateLiteral(cur)) {
+        if (typeof pre[pre.length - 1] === 'string') {
+          pre[pre.length - 1] += cur.rawText
+        } else {
+          pre.push(cur.text)
+        }
       } else {
-        pre.push(cur.text)
+        if (typeof pre[pre.length - 1] === 'string') pre.push(cur)
+        else pre.push('', cur)
       }
-    } else if (ts.isNoSubstitutionTemplateLiteral(cur)) {
-      if (typeof pre[pre.length - 1] === 'string') {
-        pre[pre.length - 1] += cur.rawText
-      } else {
-        pre.push(cur.text)
-      }
-    } else {
-      if (typeof pre[pre.length - 1] === 'string') pre.push(cur)
-      else pre.push('', cur)
-    }
 
-    return pre
-  }, [''])
+      return pre
+    },
+    ['']
+  )
 
   if (typeof combined[combined.length - 1] !== 'string') combined.push('')
   if (combined.length === 1) return ts.createStringLiteral(combined[0])
@@ -213,7 +218,7 @@ function stringPlusToTemplateExpression(exp) {
     if (index === 0) return
 
     if (typeof node !== 'string') {
-      let tail;
+      let tail
       if (index + 1 === combined.length - 1) {
         tail = ts.createTemplateTail(combined[index + 1], combined[index + 1])
       } else {
@@ -228,19 +233,26 @@ function stringPlusToTemplateExpression(exp) {
 
 const matchAccess = (access, validAccesses) => {
   const { global, globalAlias } = core.options
-  return access && access.length > 0 && validAccesses.some(validAccess => {
-    let validStart = 0
-    let accessStart = 0
-    if (validAccess[0] === global) {
-      validStart = 1
-      if (access[0].text === global || globalAlias.includes(access[0].text)) {
-        accessStart = 1
+  return (
+    access &&
+    access.length > 0 &&
+    validAccesses.some((validAccess) => {
+      let validStart = 0
+      let accessStart = 0
+      if (validAccess[0] === global) {
+        validStart = 1
+        if (access[0].text === global || globalAlias.includes(access[0].text)) {
+          accessStart = 1
+        }
       }
-    }
-    const compareValidAccess = validAccess.slice(validStart)
-    const compareAccess = access.slice(accessStart)
-    return compareValidAccess.length === compareAccess.length && compareAccess.every((v, i) => v.text === compareValidAccess[i])
-  })
+      const compareValidAccess = validAccess.slice(validStart)
+      const compareAccess = access.slice(accessStart)
+      return (
+        compareValidAccess.length === compareAccess.length &&
+        compareAccess.every((v, i) => v.text === compareValidAccess[i])
+      )
+    })
+  )
 }
 
 const isMatchAccess = (access, isCallExpression) => {
@@ -276,7 +288,7 @@ const getAccess = (node) => {
   return access
 }
 
-const isIgnoreFile = (source, map, filename) => {
+const isIgnoreFile = (filename, source, map) => {
   const { options } = core
   if (filename && options.ignorePath && options.ignorePath.test(filename)) return true
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
@@ -294,8 +306,9 @@ module.exports = {
   isIgnoreAccess,
   getAccess,
   isIgnoreFile,
-  printNode
+  printNode,
 }
+
 
 /***/ }),
 /* 5 */
@@ -308,9 +321,164 @@ module.exports = require("typescript");;
 /* 6 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const postcss = __webpack_require__(7)
-const { getParseBase64Promise } = __webpack_require__(8)
-const { parseStyleUrl } = __webpack_require__(11)
+const path = __webpack_require__(7)
+const fs = __webpack_require__(8)
+const winston = __webpack_require__(9)
+const core = __webpack_require__(1)
+
+// const dirname = path.resolve(process.cwd(), 'esrtlogs')
+// if (fs.existsSync(filename)) fs.unlinkSync(filename)
+const basename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}`)
+const filename = basename + '.log'
+
+function formateDate() {
+  const now = new Date()
+  const date = [
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate()
+  ]
+  const time = [
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+    now.getMilliseconds()
+  ]
+  return date.join('-') + '/' + time.join(':')
+}
+
+winston.addColors({
+  error: 'red',
+  warn: 'yellow',
+  info: 'cyan',
+  debug: 'green'
+})
+
+const TRANSPORTS_MAP = {
+  console: new winston.transports.Console({
+    colorize: true,
+    prettyPrint: true,
+    timestamp() {
+      return new Date().toLocaleTimeString()
+    },
+  }),
+  file: new winston.transports.File({ filename, level: 'info' }),
+}
+
+const logger = winston.createLogger({
+  format: winston.format.simple(),
+  transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
+})
+logger.__logDataCache = {}
+logger.callback = () => {
+  if (!core.options.loggerDataToJson) return
+  fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
+      if (err) throw err
+      console.log('Data written to file')
+  });
+}
+
+const levels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  verbose: 4,
+  debug: 5,
+  silly: 6
+}
+
+const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, core.options.loggerCodeLength)
+
+const cacheLogData = (data) => {
+  if (!core.options.loggerDataToJson) return
+  const { type, filename, parent } = data
+  const key = parent || filename
+  const newData = { ...data }
+  delete newData.parent
+  delete newData.filename
+  if (!key) {
+    delete newData.type
+    if (!logger.__logDataCache[type]) {
+      logger.__logDataCache[type] = []
+    }
+    logger.__logDataCache[type].push(newData)
+    return
+  }
+  if (!logger.__logDataCache[type]) {
+    logger.__logDataCache[type] = {}
+  }
+  newData.type = parent ? 'child' : 'current'
+  if (logger.__logDataCache[type][key]) {
+    logger.__logDataCache[type][key].push(newData)
+  } else {
+    logger.__logDataCache[type][key] = [newData]
+  }
+}
+
+const wrapper = (f) => (data) => {
+  cacheLogData(data)
+  const { type, filename, parent, from, to, code, transformed, error, info } = data
+  const arr = ['']
+  if (parent) {
+    arr.push(`parent: ${parent}`)
+  } else if (filename) {
+    arr.push(`current: ${filename}`)
+  }
+  if (from) {
+    arr.push(`${from} => ${to || from}`)
+  }
+  if (code) {
+    arr.push(`code: ${formatCode(code)}`)
+  }
+  if (transformed) {
+    arr.push(`transformed: ${formatCode(transformed)}`)
+  }
+  if (error) {
+    arr.push(error)
+  } 
+  if (info) {
+    arr.push(info)
+  }
+  const tag = `[ESRT-${type}]`
+  return f.call(logger, arr.join(`\n${tag}`))
+}
+
+Object.keys(levels).forEach(method => {
+  const f = logger[method]
+  logger[method] = wrapper(f)
+})
+
+module.exports = logger
+
+/***/ }),
+/* 7 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("path");;
+
+/***/ }),
+/* 8 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs");;
+
+/***/ }),
+/* 9 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("winston");;
+
+/***/ }),
+/* 10 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const postcss = __webpack_require__(11)
+const { getParseBase64Promise } = __webpack_require__(12)
+const { parseStyleUrl } = __webpack_require__(15)
 const Transformer = __webpack_require__(16)
 
 class CssTransformer extends Transformer {
@@ -324,158 +492,177 @@ class CssTransformer extends Transformer {
 
   transformAsync() {
     const transformList = []
-    this.root.walkDecls(node => {
+    this.root.walkDecls((node) => {
       // todo: consider multiple url
       const res = parseStyleUrl(node.value, true)
       if (!res) return
       transformList.push({
         node,
         href: res.href,
-        origin: res.origin
+        origin: res.origin,
       })
     })
 
-    return Promise
-      .all(transformList.map(({ href }) => getParseBase64Promise(href)))
-      .then((values) => {
+    return Promise.all(transformList.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
+      (values) => {
         values.forEach((v, i) => {
           if (!v) return
           const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
           this.log({
             code: transformList[i].node.value,
-            transformed: newCode
+            transformed: newCode,
           })
           transformList[i].node.value = newCode
         })
         const result = this.root.toResult({ map: { prev: this.map, inline: false } })
         result.meta = {
           ast: {
-            type: "postcss",
+            type: 'postcss',
             version: result.processor.version,
-            root: result.root
-          }
+            root: result.root,
+          },
         }
         return result
-      })
+      }
+    )
   }
 }
 
 module.exports = CssTransformer
 
+
 /***/ }),
-/* 7 */
+/* 11 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("postcss");;
 
 /***/ }),
-/* 8 */
+/* 12 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const http = __webpack_require__(9)
-const https = __webpack_require__(10)
-const { getUrlFullInfo } = __webpack_require__(11)
-const core = __webpack_require__(1)
-const logger = __webpack_require__(12)
+const http = __webpack_require__(13)
+const https = __webpack_require__(14)
+const { getUrlFullInfo } = __webpack_require__(15)
 
 const sourceCache = new Map()
 
 const FETCH_PROTOCOL = {
   http,
-  https
+  https,
 }
 
 const isSupportExt = (ext) => {
   return ext && !/^(html?|exe|apk)$/i.test(ext)
 }
 
-const httpGet = (url, cb) => new Promise((resolve, reject) => {
-  const fullInfo = getUrlFullInfo(url, false, core.options)
-  if (!fullInfo || fullInfo.inside || !isSupportExt(fullInfo.ext) || !FETCH_PROTOCOL[fullInfo.protocol]) {
-    return resolve()
-  }
-  let data = sourceCache.get(fullInfo.href)
-  const onEnd = () => {
-    typeof cb === 'function' && cb(data, { resolve, reject })
-    resolve(data)
-  }
-  // use cache
-  if (data) return onEnd()
-  logger.info({
-    type: fullInfo.protocol,
-    code: url,
-    transformed: fullInfo.href
-  })
-  let retryTimes = 0
-  const getErrorCallback = (req) => (error) => {
-    logger.error({
-      type: fullInfo.protocol,
-      error,
-      info: `retryTimes: ${retryTimes}`
-    })
-    req && req.abort()
-    if ((retryTimes += 1) <= core.options.requestRetryTimes) {
-      fetch()
-    } else {
-      resolve()
+const httpGet = (url, cb, options, logger) =>
+  new Promise((resolve, reject) => {
+    const fullInfo = getUrlFullInfo(url, false, options)
+    if (!fullInfo || fullInfo.inside || !isSupportExt(fullInfo.ext) || !FETCH_PROTOCOL[fullInfo.protocol]) {
+      return resolve()
     }
-  }
-  const fetch = () => {
-    const req = FETCH_PROTOCOL[fullInfo.protocol].get(fullInfo.href, {
-      timeout: core.options.requestTimeout
-    }, (res) => {
-      const chunks = []
-      res.on('data', (chunk) => {
-        chunks.push(chunk)
+    let data = sourceCache.get(fullInfo.href)
+    const onEnd = () => {
+      typeof cb === 'function' && cb(data, { resolve, reject })
+      resolve(data)
+    }
+    // use cache
+    if (data) return onEnd()
+    logger &&
+      logger.info({
+        type: fullInfo.protocol,
+        code: url,
+        transformed: fullInfo.href,
       })
-      res.on('end', (err) => {
-        if (err) return onError(err)
-        data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
-        sourceCache.set(fullInfo.href, data)
-        onEnd()
-      })
-    })
-    req.on('timeout', () => req.abort())
-    req.on('error', getErrorCallback(req))
-  }
+    let retryTimes = 0
+    const getErrorCallback = (req) => (error) => {
+      logger &&
+        logger.error({
+          type: fullInfo.protocol,
+          error,
+          info: `retryTimes: ${retryTimes}`,
+        })
+      req && req.abort()
+      if ((retryTimes += 1) <= options.requestRetryTimes) {
+        fetch()
+      } else {
+        resolve()
+      }
+    }
+    const fetch = () => {
+      const req = FETCH_PROTOCOL[fullInfo.protocol].get(
+        fullInfo.href,
+        {
+          timeout: options.requestTimeout,
+        },
+        (res) => {
+          const chunks = []
+          res.on('data', (chunk) => {
+            chunks.push(chunk)
+          })
+          res.on('end', (err) => {
+            if (err) return onError(err)
+            data = { res, chunks, size: chunks.reduce((sum, c) => sum + c.length, 0) }
+            sourceCache.set(fullInfo.href, data)
+            onEnd()
+          })
+        }
+      )
+      req.on('timeout', () => req.abort())
+      req.on('error', getErrorCallback(req))
+    }
 
-  fetch()
-})
+    fetch()
+  })
 
-const getParseBase64Promise = (url) => httpGet(url, (data, promise) => {
-  const { res, chunks, size } = data
-  const { resolve } = promise
-  resolve(`data:${res.headers['content-type']};base64,` + Buffer.concat(chunks, size).toString('base64'))
-})
+const getParseBase64Promise = (url, options, logger) =>
+  httpGet(
+    url,
+    (data, promise) => {
+      const { res, chunks, size } = data
+      const { resolve } = promise
+      resolve(`data:${res.headers['content-type']};base64,` + Buffer.concat(chunks, size).toString('base64'))
+    },
+    options,
+    logger
+  )
 
-const getParseJsPromise = (url) => httpGet(url, (data, promise) => {
-  const { chunks, size } = data
-  const { resolve } = promise
-  resolve(Buffer.concat(chunks, size).toString('utf8'))
-})
+const getParseJsPromise = (url, options, logger) =>
+  httpGet(
+    url,
+    (data, promise) => {
+      const { chunks, size } = data
+      const { resolve } = promise
+      resolve(Buffer.concat(chunks, size).toString('utf8'))
+    },
+    options,
+    logger
+  )
 
 module.exports = {
   getParseBase64Promise,
-  getParseJsPromise
+  getParseJsPromise,
 }
 
+
 /***/ }),
-/* 9 */
+/* 13 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("http");;
 
 /***/ }),
-/* 10 */
+/* 14 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("https");;
 
 /***/ }),
-/* 11 */
+/* 15 */
 /***/ ((module) => {
 
 const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#%`
@@ -645,170 +832,13 @@ module.exports = {
 }
 
 /***/ }),
-/* 12 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const path = __webpack_require__(13)
-const fs = __webpack_require__(14)
-const winston = __webpack_require__(15)
-const core = __webpack_require__(1)
-
-// const dirname = path.resolve(process.cwd(), 'esrtlogs')
-// if (fs.existsSync(filename)) fs.unlinkSync(filename)
-const basename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}`)
-const filename = basename + '.log'
-
-function formateDate() {
-  const now = new Date()
-  const date = [
-    now.getFullYear(),
-    now.getMonth() + 1,
-    now.getDate()
-  ]
-  const time = [
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds(),
-    now.getMilliseconds()
-  ]
-  return date.join('-') + '/' + time.join(':')
-}
-
-winston.addColors({
-  error: 'red',
-  warn: 'yellow',
-  info: 'cyan',
-  debug: 'green'
-})
-
-const TRANSPORTS_MAP = {
-  console: new winston.transports.Console({
-    colorize: true,
-    prettyPrint: true,
-    timestamp() {
-      return new Date().toLocaleTimeString()
-    },
-  }),
-  file: new winston.transports.File({ filename, level: 'info' }),
-}
-
-const logger = winston.createLogger({
-  format: winston.format.simple(),
-  transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
-})
-logger.__logDataCache = {}
-logger.callback = () => {
-  if (!core.options.loggerDataToJson) return
-  fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
-      if (err) throw err
-      console.log('Data written to file')
-  });
-}
-
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3,
-  verbose: 4,
-  debug: 5,
-  silly: 6
-}
-
-const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, core.options.loggerCodeLength)
-
-const cacheLogData = (data) => {
-  if (!core.options.loggerDataToJson) return
-  const { type, filename, parent } = data
-  const key = parent || filename
-  const newData = { ...data }
-  delete newData.parent
-  delete newData.filename
-  if (!key) {
-    delete newData.type
-    if (!logger.__logDataCache[type]) {
-      logger.__logDataCache[type] = []
-    }
-    logger.__logDataCache[type].push(newData)
-    return
-  }
-  if (!logger.__logDataCache[type]) {
-    logger.__logDataCache[type] = {}
-  }
-  newData.type = parent ? 'child' : 'current'
-  if (logger.__logDataCache[type][key]) {
-    logger.__logDataCache[type][key].push(newData)
-  } else {
-    logger.__logDataCache[type][key] = [newData]
-  }
-}
-
-const wrapper = (f) => (data) => {
-  cacheLogData(data)
-  const { type, filename, parent, from, to, code, transformed, error, info } = data
-  const arr = ['']
-  if (parent) {
-    arr.push(`parent: ${parent}`)
-  } else if (filename) {
-    arr.push(`current: ${filename}`)
-  }
-  if (from) {
-    arr.push(`${from} => ${to || from}`)
-  }
-  if (code) {
-    arr.push(`code: ${formatCode(code)}`)
-  }
-  if (transformed) {
-    arr.push(`transformed: ${formatCode(transformed)}`)
-  }
-  if (error) {
-    arr.push(error)
-  } 
-  if (info) {
-    arr.push(info)
-  }
-  const tag = `[ESRT-${type}]`
-  return f.call(logger, arr.join(`\n${tag}`))
-}
-
-Object.keys(levels).forEach(method => {
-  const f = logger[method]
-  logger[method] = wrapper(f)
-})
-
-module.exports = logger
-
-/***/ }),
-/* 13 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("path");;
-
-/***/ }),
-/* 14 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("fs");;
-
-/***/ }),
-/* 15 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("winston");;
-
-/***/ }),
 /* 16 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const path = __webpack_require__(13)
-const core = __webpack_require__(1)
-const logger = __webpack_require__(12)
+const path = __webpack_require__(7)
 
 class Transformer {
-  constructor({ code, map, meta, filename, parent, loader, plugin }, options = core.options) {
+  constructor({ code, map, meta, filename, parent, loader, plugin }, options = {}, logger) {
     this.code = code
     this.map = map
     this.meta = meta
@@ -817,6 +847,7 @@ class Transformer {
     this.options = options
     this.loader = loader
     this.plugin = plugin
+    this.logger = logger
     this.setFilename(filename)
     this.init()
   }
@@ -841,16 +872,18 @@ class Transformer {
   async transformAsync() {}
 
   log(options, type = 'info') {
-    logger[type] && logger[type]({
+    if (!this.logger || !this.logger[type]) return
+    this.logger[type]({
       ...options,
       filename: this.filename,
       parent: this.parent,
-      type: this.__proto__.constructor.name.replace('Transformer', '').toLowerCase()
+      type: this.__proto__.constructor.name.replace('Transformer', '').toLowerCase(),
     })
   }
 }
 
 module.exports = Transformer
+
 
 /***/ }),
 /* 17 */
@@ -867,18 +900,15 @@ module.exports = factory(TsTransformer)
 
 const ts = __webpack_require__(5)
 const TsProcessor = __webpack_require__(19)
-const { transformCgi } = __webpack_require__(11)
-const {
-  getParseBase64Promise,
-} = __webpack_require__(8)
+const { transformCgi } = __webpack_require__(15)
+const { getParseBase64Promise } = __webpack_require__(12)
 const { printNode } = __webpack_require__(4)
 const Transformer = __webpack_require__(16)
-const core = __webpack_require__(1)
 
 class TsTransformer extends Transformer {
   init() {
     this.sourceFile = ts.createSourceFile(this.filename, this.code, ts.ScriptTarget.Latest, /*setParentNodes */ true)
-    this.processor = new TsProcessor(this.sourceFile, { ...this.options })
+    this.processor = new TsProcessor(this.sourceFile, this.options)
   }
 
   transformAsync() {
@@ -888,13 +918,16 @@ class TsTransformer extends Transformer {
       let targetCs
       if (!isSpecific) {
         const { location, locations, node, text } = cs
-        if (!ts.isTemplateExpression(node) && (locations || location.ext && location.ext !== 'js')) {
+        if (!ts.isTemplateExpression(node) && (locations || (location.ext && location.ext !== 'js'))) {
           // not support template
-          const promises = (locations || [location]).map(({ href }) => getParseBase64Promise(href))
+          const promises = (locations || [location]).map(({ href }) =>
+            getParseBase64Promise(href, this.options, this.logger)
+          )
           let newText = text
-          return Promise
-            .all(promises)
-            .then(res => res.forEach((v, i) => v && (newText = locations ? newText.replace(locations[i].origin, v) : v)))
+          return Promise.all(promises)
+            .then((res) =>
+              res.forEach((v, i) => v && (newText = locations ? newText.replace(locations[i].origin, v) : v))
+            )
             .then(() => {
               if (newText === text) return
               let newNode = null
@@ -903,10 +936,12 @@ class TsTransformer extends Transformer {
               } else if (ts.isNoSubstitutionTemplateLiteral(node)) {
                 newNode = ts.createNoSubstitutionTemplateLiteral(newText)
               }
-              return newNode && {
-                ...cs,
-                target: printNode(newNode, changeset.sourceFile)
-              }
+              return (
+                newNode && {
+                  ...cs,
+                  target: printNode(newNode, changeset.sourceFile),
+                }
+              )
             })
         }
         targetCs = cs
@@ -916,8 +951,12 @@ class TsTransformer extends Transformer {
       // cgi
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
-      const newUrl = transformCgi(location, core.options)
-      if (!location.inside && !core.options.blockExtraUrl || newUrl === (ts.isTemplateExpression(node) ? node.head.text : node.text)) return Promise.resolve()
+      const newUrl = transformCgi(location, this.options)
+      if (
+        (!location.inside && !this.options.blockExtraUrl) ||
+        newUrl === (ts.isTemplateExpression(node) ? node.head.text : node.text)
+      )
+        return Promise.resolve()
       let newNode = null
       if (ts.isStringLiteral(node)) {
         newNode = ts.createStringLiteral(newUrl)
@@ -928,34 +967,40 @@ class TsTransformer extends Transformer {
       }
       if (!newNode) return Promise.resolve()
       if (isSpecific) {
-        newNode = ts.transform(cs.node, [(context) => (root) => {
-          const nodeVisitor = (old) => old === node ? newNode : ts.visitEachChild(old, nodeVisitor, context)
-          return ts.visitNode(root, nodeVisitor)
-        }]).transformed[0]
+        newNode = ts.transform(
+          cs.node,
+          [
+            (context) => (root) => {
+              const nodeVisitor = (old) => (old === node ? newNode : ts.visitEachChild(old, nodeVisitor, context))
+              return ts.visitNode(root, nodeVisitor)
+            },
+          ],
+          { jsx: ts.JsxEmit.React }
+        ).transformed[0]
       }
       return Promise.resolve({
         ...cs,
-        target: printNode(newNode, changeset.sourceFile)
+        target: printNode(newNode, changeset.sourceFile),
       })
     }
     const promises = changeset.value.map((cs) => genNewCodePromise(cs, cs.access instanceof Array))
-    return Promise.all(promises).then(res => {
+    return Promise.all(promises).then((res) => {
       let diff = 0
-      res.forEach(cs => {
+      res.forEach((cs) => {
         if (!cs) return
         // recover prefix space
         // const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
         // const newCode = (oldCode.match(/^\s+/) || [''])[0] + cs.target
         try {
           cs.start = cs.node.getStart()
-        } catch(err) {
+        } catch (err) {
           // debugger
         }
         const oldCode = transformedCode.substr(cs.start + diff, cs.end - cs.start)
         const newCode = cs.target
         this.log({
           code: oldCode,
-          transformed: newCode
+          transformed: newCode,
         })
         transformedCode = transformedCode.substr(0, cs.start + diff) + newCode + transformedCode.substr(cs.end + diff)
         diff += newCode.length - cs.end + cs.start
@@ -967,22 +1012,19 @@ class TsTransformer extends Transformer {
 
 module.exports = TsTransformer
 
+
 /***/ }),
 /* 19 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const ts = __webpack_require__(5)
-const { getUrlFullInfo, execStyleUrl } = __webpack_require__(11)
-const {
-  getAccess,
-  isMatchAccess,
-  isIgnoreAccess,
-  printNode
-} = __webpack_require__(4)
+const { getUrlFullInfo, execStyleUrl } = __webpack_require__(15)
+const { getAccess, isMatchAccess, isIgnoreAccess, printNode } = __webpack_require__(4)
 const Changeset = __webpack_require__(20)
-const core = __webpack_require__(1)
 
-const keywords = 'align-content align-items align-self all animation animation-delay animation-direction animation-duration animation-fill-mode animation-iteration-count animation-name animation-play-state animation-timing-function backface-visibility background background-attachment background-blend-mode background-clip background-color background-image background-origin background-position background-repeat background-size border border-bottom border-bottom-color border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width border-collapse border-color border-image border-image-outset border-image-repeat border-image-slice border-image-source border-image-width border-left border-left-color border-left-style border-left-width border-radius border-right border-right-color border-right-style border-right-width border-spacing border-style border-top border-top-color border-top-left-radius border-top-right-radius border-top-style border-top-width border-width bottom box-decoration-break box-shadow box-sizing break-after break-before break-inside caption-side caret-color @charset clear clip color column-count column-fill column-gap column-rule column-rule-color column-rule-style column-rule-width column-span column-width columns content counter-increment counter-reset cursor direction display empty-cells filter flex flex-basis flex-direction flex-flow flex-grow flex-shrink flex-wrap float font @font-face font-family font-feature-settings @font-feature-values font-kerning font-language-override font-size font-size-adjust font-stretch font-style font-synthesis font-variant font-variant-alternates font-variant-caps font-variant-east-asian font-variant-ligatures font-variant-numeric font-variant-position font-weight grid grid-area grid-auto-columns grid-auto-flow grid-auto-rows grid-column grid-column-end grid-column-gap grid-column-start grid-gap grid-row grid-row-end grid-row-gap grid-row-start grid-template grid-template-areas grid-template-columns grid-template-rows hanging-punctuation height hyphens image-rendering @import isolation justify-content @keyframes left letter-spacing line-break line-height list-style list-style-image list-style-position list-style-type margin margin-bottom margin-left margin-right margin-top max-height max-width @media min-height min-width mix-blend-mode object-fit object-position opacity order orphans outline outline-color outline-offset outline-style outline-width overflow overflow-wrap overflow-x overflow-y padding padding-bottom padding-left padding-right padding-top page-break-after page-break-before page-break-inside perspective perspective-origin pointer-events position quotes resize right scroll-behavior tab-size table-layout text-align text-align-last text-combine-upright text-decoration text-decoration-color text-decoration-line text-decoration-style text-indent text-justify text-orientation text-overflow text-shadow text-transform text-underline-position top transform transform-origin transform-style transition transition-delay transition-duration transition-property transition-timing-function unicode-bidi user-select vertical-align visibility white-space widows width word-break word-spacing word-wrap writing-mode z-index box-orient box-align box-pack'.split(' ')
+const keywords = 'align-content align-items align-self all animation animation-delay animation-direction animation-duration animation-fill-mode animation-iteration-count animation-name animation-play-state animation-timing-function backface-visibility background background-attachment background-blend-mode background-clip background-color background-image background-origin background-position background-repeat background-size border border-bottom border-bottom-color border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width border-collapse border-color border-image border-image-outset border-image-repeat border-image-slice border-image-source border-image-width border-left border-left-color border-left-style border-left-width border-radius border-right border-right-color border-right-style border-right-width border-spacing border-style border-top border-top-color border-top-left-radius border-top-right-radius border-top-style border-top-width border-width bottom box-decoration-break box-shadow box-sizing break-after break-before break-inside caption-side caret-color @charset clear clip color column-count column-fill column-gap column-rule column-rule-color column-rule-style column-rule-width column-span column-width columns content counter-increment counter-reset cursor direction display empty-cells filter flex flex-basis flex-direction flex-flow flex-grow flex-shrink flex-wrap float font @font-face font-family font-feature-settings @font-feature-values font-kerning font-language-override font-size font-size-adjust font-stretch font-style font-synthesis font-variant font-variant-alternates font-variant-caps font-variant-east-asian font-variant-ligatures font-variant-numeric font-variant-position font-weight grid grid-area grid-auto-columns grid-auto-flow grid-auto-rows grid-column grid-column-end grid-column-gap grid-column-start grid-gap grid-row grid-row-end grid-row-gap grid-row-start grid-template grid-template-areas grid-template-columns grid-template-rows hanging-punctuation height hyphens image-rendering @import isolation justify-content @keyframes left letter-spacing line-break line-height list-style list-style-image list-style-position list-style-type margin margin-bottom margin-left margin-right margin-top max-height max-width @media min-height min-width mix-blend-mode object-fit object-position opacity order orphans outline outline-color outline-offset outline-style outline-width overflow overflow-wrap overflow-x overflow-y padding padding-bottom padding-left padding-right padding-top page-break-after page-break-before page-break-inside perspective perspective-origin pointer-events position quotes resize right scroll-behavior tab-size table-layout text-align text-align-last text-combine-upright text-decoration text-decoration-color text-decoration-line text-decoration-style text-indent text-justify text-orientation text-overflow text-shadow text-transform text-underline-position top transform transform-origin transform-style transition transition-delay transition-duration transition-property transition-timing-function unicode-bidi user-select vertical-align visibility white-space widows width word-break word-spacing word-wrap writing-mode z-index box-orient box-align box-pack'.split(
+  ' '
+)
 
 const totalSet = new Set([...keywords])
 
@@ -1022,12 +1064,12 @@ const IgnoreType = {
   Import: 'Import',
   Require: 'Require',
   ImportKeyword: 'ImportKeyword',
-  Export: 'Export'
+  Export: 'Export',
 }
 
 /**
  * 需要忽略的节点
- * @param node 
+ * @param node
  */
 function isIgnoreNode(node, sourceFile) {
   if (ts.isImportDeclaration(node)) {
@@ -1037,20 +1079,30 @@ function isIgnoreNode(node, sourceFile) {
     return IgnoreType.Export
   }
   // ignore console
-  if (ts.isCallExpression(node)
-    && ts.isPropertyAccessExpression(node.expression)
-    && /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())) {
+  if (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    /^(window\.)?((__)?console|__log)\./.test(printNode(node.expression, sourceFile).trim())
+  ) {
     return IgnoreType.Console
   }
   if (ts.isCallExpression(node) && ts.isImportKeyword(node.expression)) return IgnoreType.ImportKeyword
-  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.escapedText === 'require') return IgnoreType.Require
+  if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.escapedText === 'require')
+    return IgnoreType.Require
   // type definition
   if (ts.isTypeNode(node)) return IgnoreType.TypeNode
   // ignore console
-  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.escapedText === 'log') return IgnoreType.Log
-  if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'SPEED_REPORT_LOG') return IgnoreType.SpeedReportLog
+  if (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    node.expression.name.escapedText === 'log'
+  )
+    return IgnoreType.Log
+  if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === 'SPEED_REPORT_LOG')
+    return IgnoreType.SpeedReportLog
   // Error
-  if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Error') return IgnoreType.ErrorExp
+  if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'Error')
+    return IgnoreType.ErrorExp
   // Property
   if (node.parent && ts.isPropertyAssignment(node.parent) && node === node.parent.name) return IgnoreType.Property
   // Enum
@@ -1068,30 +1120,32 @@ class TsProcessor {
     this.options = options
     this.jsxAttribute = null
 
-    this.traverseFuncs = [
-      this.traverseExpression,
-      this.traverseStringPlus,
-      this.traverseString
-    ]
+    this.traverseFuncs = [this.traverseExpression, this.traverseStringPlus, this.traverseString]
   }
 
   traverse(root = this.sourceFile, changeset = new Changeset(this.sourceFile)) {
-    const ast = ts.transform(root, [(context) => (root) => {
-      const nodeVisitor = (node) => {
-        if (isIgnoreNode(node, this.sourceFile)) return node
-        if (!this.jsxAttribute && ts.isJsxAttribute(node)) this.jsxAttribute = node
-        let res
-        this.traverseFuncs.some(f => res = f.call(this, node, changeset))
-        if (res) {
-          if (res.ignore) return node
-          return res.node
-        }
-        res = ts.visitEachChild(node, nodeVisitor, context)
-        if (this.jsxAttribute === node) this.jsxAttribute = null
-        return res
-      }
-      return ts.visitNode(root, nodeVisitor)
-    }])
+    const ast = ts.transform(
+      root,
+      [
+        (context) => (root) => {
+          const nodeVisitor = (node) => {
+            if (isIgnoreNode(node, this.sourceFile)) return node
+            if (!this.jsxAttribute && ts.isJsxAttribute(node)) this.jsxAttribute = node
+            let res
+            this.traverseFuncs.some((f) => (res = f.call(this, node, changeset)))
+            if (res) {
+              if (res.ignore) return node
+              return res.node
+            }
+            res = ts.visitEachChild(node, nodeVisitor, context)
+            if (this.jsxAttribute === node) this.jsxAttribute = null
+            return res
+          }
+          return ts.visitNode(root, nodeVisitor)
+        },
+      ],
+      { jsx: ts.JsxEmit.React }
+    )
     return { node: ast.transformed[0], changeset }
   }
 
@@ -1101,7 +1155,10 @@ class TsProcessor {
     let cs
     if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
       text = expr.text
-      if (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(expr.parent) || cssDetect(text)) {
+      if (
+        (this.jsxAttribute && this.jsxAttribute.name.text === 'style' && ts.isPropertyAssignment(expr.parent)) ||
+        cssDetect(text)
+      ) {
         const locations = execStyleUrl(text, true)
         if (!locations.length) return
         cs = { node: expr, text, locations }
@@ -1112,7 +1169,7 @@ class TsProcessor {
     } else {
       return
     }
-    if (!cs && text && (location = getUrlFullInfo(text, incomplete, core.options))) {
+    if (!cs && text && (location = getUrlFullInfo(text, incomplete, this.options))) {
       cs = { node: expr, text, location }
     }
     if (cs) {
@@ -1122,34 +1179,40 @@ class TsProcessor {
   }
 
   traverseStringPlus(expr, changeset) {
-    const isStringPlusExp = node => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
+    const isStringPlusExp = (node) => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
     if (!isStringPlusExp(expr)) return
-    const ast = ts.transform(expr, [(context) => (root) => {
-      const handler = (node) => {
-        if (!isStringPlusExp(node)) return this.traverse(node, changeset).node
-        if (
-          (ts.isStringLiteral(node.left) || ts.isNoSubstitutionTemplateLiteral(node.left)) &&
-          (ts.isStringLiteral(node.right) || ts.isNoSubstitutionTemplateLiteral(node.right))
-        ) {
-          const textNode = new ts.createStringLiteral(node.left.text + node.right.text)
-          textNode.parent = node.parent
-          textNode.pos = node.left.pos
-          textNode.end = node.right.end
-          this.traverseString(textNode, changeset)
-          return textNode
-        } else if (ts.isStringLiteral(node.left) || ts.isNoSubstitutionTemplateLiteral(node.left) || ts.isTemplateExpression(node.left)) {
-          this.traverseString(node.left, changeset)
-          return node
+    const ast = ts.transform(expr, [
+      (context) => (root) => {
+        const handler = (node) => {
+          if (!isStringPlusExp(node)) return this.traverse(node, changeset).node
+          if (
+            (ts.isStringLiteral(node.left) || ts.isNoSubstitutionTemplateLiteral(node.left)) &&
+            (ts.isStringLiteral(node.right) || ts.isNoSubstitutionTemplateLiteral(node.right))
+          ) {
+            const textNode = new ts.createStringLiteral(node.left.text + node.right.text)
+            textNode.parent = node.parent
+            textNode.pos = node.left.pos
+            textNode.end = node.right.end
+            this.traverseString(textNode, changeset)
+            return textNode
+          } else if (
+            ts.isStringLiteral(node.left) ||
+            ts.isNoSubstitutionTemplateLiteral(node.left) ||
+            ts.isTemplateExpression(node.left)
+          ) {
+            this.traverseString(node.left, changeset)
+            return node
+          }
         }
-      }
-      const nodeVisitor = (node) => {
-        let newNode = handler(node)
-        if (newNode) return newNode
-        newNode = ts.visitEachChild(node, nodeVisitor, context)
-        return handler(newNode) || newNode
-      }
-      return ts.visitNode(root, nodeVisitor)
-    }])
+        const nodeVisitor = (node) => {
+          let newNode = handler(node)
+          if (newNode) return newNode
+          newNode = ts.visitEachChild(node, nodeVisitor, context)
+          return handler(newNode) || newNode
+        }
+        return ts.visitNode(root, nodeVisitor)
+      },
+    ])
     return { node: ast.transformed[0], changeset }
   }
 
@@ -1190,6 +1253,7 @@ class TsProcessor {
 }
 
 module.exports = TsProcessor
+
 
 /***/ }),
 /* 20 */
@@ -1238,9 +1302,10 @@ class Changeset {
       i = Math.floor((s + e) / 2)
       const startMt = i ? start >= this._changesets[i - 1].end : true
       if (start <= this._changesets[i].start && end >= this._changesets[i].end) {
-        while (i > 0 && start <= this._changesets[i].start) {
+        while (i >= 0 && start <= this._changesets[i].start) {
           i -= 1
         }
+        i += 1
         let t = i + 1
         while (t < this._changesets.length && end >= this._changesets[t].end) {
           t += 1
@@ -1273,18 +1338,18 @@ const HtmlWebpackPlugin = __webpack_require__(22)
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = __webpack_require__(23)
-const logger = __webpack_require__(12)
+const logger = __webpack_require__(6)
+const core = __webpack_require__(1)
 
 class HtmlWebpackESRTPlugin {
   apply(compiler) {
     compiler.hooks.compilation.tap('ESRTPlugin', (compilation) => {
-      HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync(
-        'ESRTPlugin',
-        (data, cb) => new HtmlTransformer({ code: data.html, plugin: data.plugin })
+      HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync('ESRTPlugin', (data, cb) =>
+        new HtmlTransformer({ code: data.html, plugin: data.plugin }, core.options, logger)
           .transformAsync()
-          .then(html => cb(null, { ...data, html }))
+          .then((html) => cb(null, { ...data, html }))
           .then(() => logger.callback())
-          .catch(e => cb(e))
+          .catch((e) => cb(e))
       )
     })
   }
@@ -1308,21 +1373,13 @@ var __dirname = "src/core/transformer";
 const htmlparser2 = __webpack_require__(24)
 const domSerializer = __webpack_require__(25)
 const domHandler = __webpack_require__(26)
-const {
-  getParseBase64Promise,
-  getParseJsPromise
-} = __webpack_require__(8)
-const {
-  testUrl,
-  parseStyleUrl,
-  execStyleUrl
-} = __webpack_require__(11)
+const { getParseBase64Promise, getParseJsPromise } = __webpack_require__(12)
+const { testUrl, parseStyleUrl, execStyleUrl } = __webpack_require__(15)
 const Transformer = __webpack_require__(16)
 const TsTransformer = __webpack_require__(18)
-const CssTransformer = __webpack_require__(6)
-const fs = __webpack_require__(14)
-const path = __webpack_require__(13)
-const core = __webpack_require__(1)
+const CssTransformer = __webpack_require__(10)
+const fs = __webpack_require__(8)
+const path = __webpack_require__(7)
 
 const addNode = (node, parent, type = 'prepend') => {
   // type append prepend reset
@@ -1347,20 +1404,26 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static getInjectJs(instance = { log: () => {} }) {
-    if (!core.options.injectBlockMethod) return null
+  static getInjectJs(instance = { log: () => {}, options: {} }) {
+    if (!instance.options.injectBlockMethod) return null
     if (!HtmlTransformer.injectJsCache) {
       try {
         const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
-        HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
+        HtmlTransformer.injectJsCache = file.replace(
+          '__OPTIONS__',
+          JSON.stringify(instance.options).replace(/"/g, '\\"')
+        )
         instance.log({
-          info: 'inject success!'
+          info: 'inject success!',
         })
       } catch (error) {
-        instance.log({
-          error,
-          info: 'inject error!'
-        }, 'error')
+        instance.log(
+          {
+            error,
+            info: 'inject error!',
+          },
+          'error'
+        )
       }
     }
     return HtmlTransformer.injectJsCache || null
@@ -1385,7 +1448,7 @@ class HtmlTransformer extends Transformer {
     while (stack.length) {
       const cur = stack.pop()
       typeof handler === 'function' && handler(cur)
-      stack.push(...(cur.children || []).map(v => v))
+      stack.push(...(cur.children || []).map((v) => v))
     }
   }
 
@@ -1415,7 +1478,8 @@ class HtmlTransformer extends Transformer {
           return
       }
 
-      if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true)) shouldTransformNodes.push({ node, attr: 'style' })
+      if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true))
+        shouldTransformNodes.push({ node, attr: 'style' })
     }
     this.dfs(this.root, hanler)
     this.injectJs(head)
@@ -1427,28 +1491,29 @@ class HtmlTransformer extends Transformer {
     if (attr === 'style') {
       // style attr
       const extractResult = execStyleUrl(node.attribs[attr], true)
-      return Promise
-        .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
-        .then(res => res.forEach((v, i) => {
-          if (!v) return
-          const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
-          this.log({
-            from: 'tag attr style',
-            code: node.attribs[attr],
-            transformed: newCode
+      return Promise.all(extractResult.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
+        (res) =>
+          res.forEach((v, i) => {
+            if (!v) return
+            const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
+            this.log({
+              from: 'tag attr style',
+              code: node.attribs[attr],
+              transformed: newCode,
+            })
+            node.attribs[attr] = newCode
           })
-          node.attribs[attr] = newCode
-        }))
+      )
     } else if (attr) {
       if (attr === 'src' && node.name === 'script') {
         // js src
-        return getParseJsPromise(node.attribs[attr]).then(v => {
+        return getParseJsPromise(node.attribs[attr], this.options, this.logger).then((v) => {
           if (!v) return
           this.log({
             from: 'script attr src',
             to: 'script innerText',
             code: node.attribs[attr],
-            transformed: v
+            transformed: v,
           })
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
@@ -1456,21 +1521,21 @@ class HtmlTransformer extends Transformer {
         })
       } else {
         // other link
-        return getParseBase64Promise(node.attribs[attr]).then(v => {
+        return getParseBase64Promise(node.attribs[attr], this.options, this.logger).then((v) => {
           if (!v) return
           this.log({
             from: 'tag attr href',
             code: node.attribs[attr],
-            transformed: v
+            transformed: v,
           })
           node.attribs[attr] = v
         })
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
-      return new transformer({ code: text, parent: this.filename })
+      return new transformer({ code: text, parent: this.filename }, this.options, this.logger)
         .transformAsync()
-        .then(res => {
+        .then((res) => {
           const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
           addNode(newTextNode, node, 'reset')
         })
@@ -1478,18 +1543,19 @@ class HtmlTransformer extends Transformer {
   }
 
   transformAsync() {
-    const items = this.traverse().map(item => this.genPromise(item))
+    const items = this.traverse().map((item) => this.genPromise(item))
     return Promise.all(items)
       .then(() => domSerializer.default(this.root))
-      .catch(error => {
+      .catch((error) => {
         this.log({
-          error
+          error,
         })
       })
   }
 }
 
 module.exports = HtmlTransformer
+
 
 /***/ }),
 /* 24 */

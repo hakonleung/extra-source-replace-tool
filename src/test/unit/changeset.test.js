@@ -28,13 +28,13 @@ describe('changeset', () => {
   })
 
   test('contain range insert', () => {
-    const containData = { start: 0, end: 5 }
+    const containData = { start: 3, end: 10 }
     cs.add(containData)
 
     expect(cs._changesets).toHaveLength(2)
 
-    expect(cs._changesets[0]).toMatchObject(containData)
-    expect(cs._changesets[1]).toMatchObject(originData[2])
+    expect(cs._changesets[0]).toMatchObject(originData[1])
+    expect(cs._changesets[1]).toMatchObject(containData)
   })
 
   test('start is undefined', () => {

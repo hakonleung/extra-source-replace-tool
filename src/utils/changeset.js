@@ -41,9 +41,10 @@ class Changeset {
       i = Math.floor((s + e) / 2)
       const startMt = i ? start >= this._changesets[i - 1].end : true
       if (start <= this._changesets[i].start && end >= this._changesets[i].end) {
-        while (i > 0 && start <= this._changesets[i].start) {
+        while (i >= 0 && start <= this._changesets[i].start) {
           i -= 1
         }
+        i += 1
         let t = i + 1
         while (t < this._changesets.length && end >= this._changesets[t].end) {
           t += 1

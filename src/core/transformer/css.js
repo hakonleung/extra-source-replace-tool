@@ -14,39 +14,39 @@ class CssTransformer extends Transformer {
 
   transformAsync() {
     const transformList = []
-    this.root.walkDecls(node => {
+    this.root.walkDecls((node) => {
       // todo: consider multiple url
       const res = parseStyleUrl(node.value, true)
       if (!res) return
       transformList.push({
         node,
         href: res.href,
-        origin: res.origin
+        origin: res.origin,
       })
     })
 
-    return Promise
-      .all(transformList.map(({ href }) => getParseBase64Promise(href)))
-      .then((values) => {
+    return Promise.all(transformList.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
+      (values) => {
         values.forEach((v, i) => {
           if (!v) return
           const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
           this.log({
             code: transformList[i].node.value,
-            transformed: newCode
+            transformed: newCode,
           })
           transformList[i].node.value = newCode
         })
         const result = this.root.toResult({ map: { prev: this.map, inline: false } })
         result.meta = {
           ast: {
-            type: "postcss",
+            type: 'postcss',
             version: result.processor.version,
-            root: result.root
-          }
+            root: result.root,
+          },
         }
         return result
-      })
+      }
+    )
   }
 }
 

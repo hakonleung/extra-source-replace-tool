@@ -2,7 +2,7 @@ const ts = require('typescript')
 const core = require('../core')
 
 function stringPlusToTemplateExpression(exp) {
-  const isStringPlusExp = node => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
+  const isStringPlusExp = (node) => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
 
   if (!isStringPlusExp(exp)) return
   let canTransform = true
@@ -28,28 +28,30 @@ function stringPlusToTemplateExpression(exp) {
   ts.forEachChild(exp, visit)
   if (!canTransform || nodes.length < 2) return
 
-
   // 预处理：保证变量一定是字符串间隔的
-  const combined = nodes.reduce((pre, cur) => {
-    if (ts.isStringLiteral(cur)) {
-      if (typeof pre[pre.length - 1] === 'string') {
-        pre[pre.length - 1] += cur.text
+  const combined = nodes.reduce(
+    (pre, cur) => {
+      if (ts.isStringLiteral(cur)) {
+        if (typeof pre[pre.length - 1] === 'string') {
+          pre[pre.length - 1] += cur.text
+        } else {
+          pre.push(cur.text)
+        }
+      } else if (ts.isNoSubstitutionTemplateLiteral(cur)) {
+        if (typeof pre[pre.length - 1] === 'string') {
+          pre[pre.length - 1] += cur.rawText
+        } else {
+          pre.push(cur.text)
+        }
       } else {
-        pre.push(cur.text)
+        if (typeof pre[pre.length - 1] === 'string') pre.push(cur)
+        else pre.push('', cur)
       }
-    } else if (ts.isNoSubstitutionTemplateLiteral(cur)) {
-      if (typeof pre[pre.length - 1] === 'string') {
-        pre[pre.length - 1] += cur.rawText
-      } else {
-        pre.push(cur.text)
-      }
-    } else {
-      if (typeof pre[pre.length - 1] === 'string') pre.push(cur)
-      else pre.push('', cur)
-    }
 
-    return pre
-  }, [''])
+      return pre
+    },
+    ['']
+  )
 
   if (typeof combined[combined.length - 1] !== 'string') combined.push('')
   if (combined.length === 1) return ts.createStringLiteral(combined[0])
@@ -60,7 +62,7 @@ function stringPlusToTemplateExpression(exp) {
     if (index === 0) return
 
     if (typeof node !== 'string') {
-      let tail;
+      let tail
       if (index + 1 === combined.length - 1) {
         tail = ts.createTemplateTail(combined[index + 1], combined[index + 1])
       } else {
@@ -75,19 +77,26 @@ function stringPlusToTemplateExpression(exp) {
 
 const matchAccess = (access, validAccesses) => {
   const { global, globalAlias } = core.options
-  return access && access.length > 0 && validAccesses.some(validAccess => {
-    let validStart = 0
-    let accessStart = 0
-    if (validAccess[0] === global) {
-      validStart = 1
-      if (access[0].text === global || globalAlias.includes(access[0].text)) {
-        accessStart = 1
+  return (
+    access &&
+    access.length > 0 &&
+    validAccesses.some((validAccess) => {
+      let validStart = 0
+      let accessStart = 0
+      if (validAccess[0] === global) {
+        validStart = 1
+        if (access[0].text === global || globalAlias.includes(access[0].text)) {
+          accessStart = 1
+        }
       }
-    }
-    const compareValidAccess = validAccess.slice(validStart)
-    const compareAccess = access.slice(accessStart)
-    return compareValidAccess.length === compareAccess.length && compareAccess.every((v, i) => v.text === compareValidAccess[i])
-  })
+      const compareValidAccess = validAccess.slice(validStart)
+      const compareAccess = access.slice(accessStart)
+      return (
+        compareValidAccess.length === compareAccess.length &&
+        compareAccess.every((v, i) => v.text === compareValidAccess[i])
+      )
+    })
+  )
 }
 
 const isMatchAccess = (access, isCallExpression) => {
@@ -123,7 +132,7 @@ const getAccess = (node) => {
   return access
 }
 
-const isIgnoreFile = (source, map, filename) => {
+const isIgnoreFile = (filename, source, map) => {
   const { options } = core
   if (filename && options.ignorePath && options.ignorePath.test(filename)) return true
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
@@ -141,5 +150,5 @@ module.exports = {
   isIgnoreAccess,
   getAccess,
   isIgnoreFile,
-  printNode
+  printNode,
 }

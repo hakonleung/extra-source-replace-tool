@@ -1,6 +1,6 @@
 const core = require('core/index')
 const { testUrl, getUrlFullInfo, parseStyleUrl, execStyleUrl, transformCgi } = require('utils/url-parser')
-const { href, invalidUrls, coreOptions, validSources, invalidSources } = require('test/data')
+const { href, invalidUrls, coreOptions, validSources, invalidSources } = require('test/helper')
 
 describe('url-parser', () => {
   // toMatchObject

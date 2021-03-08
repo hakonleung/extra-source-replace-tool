@@ -1,21 +1,13 @@
 const htmlparser2 = require('htmlparser2')
 const domSerializer = require('dom-serializer')
 const domHandler = require('domhandler')
-const {
-  getParseBase64Promise,
-  getParseJsPromise
-} = require('../../utils/http')
-const {
-  testUrl,
-  parseStyleUrl,
-  execStyleUrl
-} = require('../../utils/url-parser')
+const { getParseBase64Promise, getParseJsPromise } = require('../../utils/http')
+const { testUrl, parseStyleUrl, execStyleUrl } = require('../../utils/url-parser')
 const Transformer = require('.')
 const TsTransformer = require('./ts')
 const CssTransformer = require('./css')
 const fs = require('fs')
 const path = require('path')
-const core = require('../')
 
 const addNode = (node, parent, type = 'prepend') => {
   // type append prepend reset
@@ -40,20 +32,26 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static getInjectJs(instance = { log: () => {} }) {
-    if (!core.options.injectBlockMethod) return null
+  static getInjectJs(instance = { log: () => {}, options: {} }) {
+    if (!instance.options.injectBlockMethod) return null
     if (!HtmlTransformer.injectJsCache) {
       try {
         const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
-        HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(core.options).replace(/"/g, '\\"'))
+        HtmlTransformer.injectJsCache = file.replace(
+          '__OPTIONS__',
+          JSON.stringify(instance.options).replace(/"/g, '\\"')
+        )
         instance.log({
-          info: 'inject success!'
+          info: 'inject success!',
         })
       } catch (error) {
-        instance.log({
-          error,
-          info: 'inject error!'
-        }, 'error')
+        instance.log(
+          {
+            error,
+            info: 'inject error!',
+          },
+          'error'
+        )
       }
     }
     return HtmlTransformer.injectJsCache || null
@@ -78,7 +76,7 @@ class HtmlTransformer extends Transformer {
     while (stack.length) {
       const cur = stack.pop()
       typeof handler === 'function' && handler(cur)
-      stack.push(...(cur.children || []).map(v => v))
+      stack.push(...(cur.children || []).map((v) => v))
     }
   }
 
@@ -108,7 +106,8 @@ class HtmlTransformer extends Transformer {
           return
       }
 
-      if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true)) shouldTransformNodes.push({ node, attr: 'style' })
+      if (node.attribs && node.attribs.style && parseStyleUrl(node.attribs.style, true))
+        shouldTransformNodes.push({ node, attr: 'style' })
     }
     this.dfs(this.root, hanler)
     this.injectJs(head)
@@ -120,28 +119,29 @@ class HtmlTransformer extends Transformer {
     if (attr === 'style') {
       // style attr
       const extractResult = execStyleUrl(node.attribs[attr], true)
-      return Promise
-        .all(extractResult.map(({ href }) => getParseBase64Promise(href)))
-        .then(res => res.forEach((v, i) => {
-          if (!v) return
-          const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
-          this.log({
-            from: 'tag attr style',
-            code: node.attribs[attr],
-            transformed: newCode
+      return Promise.all(extractResult.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
+        (res) =>
+          res.forEach((v, i) => {
+            if (!v) return
+            const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
+            this.log({
+              from: 'tag attr style',
+              code: node.attribs[attr],
+              transformed: newCode,
+            })
+            node.attribs[attr] = newCode
           })
-          node.attribs[attr] = newCode
-        }))
+      )
     } else if (attr) {
       if (attr === 'src' && node.name === 'script') {
         // js src
-        return getParseJsPromise(node.attribs[attr]).then(v => {
+        return getParseJsPromise(node.attribs[attr], this.options, this.logger).then((v) => {
           if (!v) return
           this.log({
             from: 'script attr src',
             to: 'script innerText',
             code: node.attribs[attr],
-            transformed: v
+            transformed: v,
           })
           const textNode = new domHandler.Text(v)
           node.children = [textNode]
@@ -149,21 +149,21 @@ class HtmlTransformer extends Transformer {
         })
       } else {
         // other link
-        return getParseBase64Promise(node.attribs[attr]).then(v => {
+        return getParseBase64Promise(node.attribs[attr], this.options, this.logger).then((v) => {
           if (!v) return
           this.log({
             from: 'tag attr href',
             code: node.attribs[attr],
-            transformed: v
+            transformed: v,
           })
           node.attribs[attr] = v
         })
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
-      return new transformer({ code: text, parent: this.filename })
+      return new transformer({ code: text, parent: this.filename }, this.options, this.logger)
         .transformAsync()
-        .then(res => {
+        .then((res) => {
           const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
           addNode(newTextNode, node, 'reset')
         })
@@ -171,12 +171,12 @@ class HtmlTransformer extends Transformer {
   }
 
   transformAsync() {
-    const items = this.traverse().map(item => this.genPromise(item))
+    const items = this.traverse().map((item) => this.genPromise(item))
     return Promise.all(items)
       .then(() => domSerializer.default(this.root))
-      .catch(error => {
+      .catch((error) => {
         this.log({
-          error
+          error,
         })
       })
   }

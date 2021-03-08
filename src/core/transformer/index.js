@@ -1,9 +1,7 @@
 const path = require('path')
-const core = require('..')
-const logger = require('../../utils/logger')
 
 class Transformer {
-  constructor({ code, map, meta, filename, parent, loader, plugin }, options = core.options) {
+  constructor({ code, map, meta, filename, parent, loader, plugin }, options = {}, logger) {
     this.code = code
     this.map = map
     this.meta = meta
@@ -12,6 +10,7 @@ class Transformer {
     this.options = options
     this.loader = loader
     this.plugin = plugin
+    this.logger = logger
     this.setFilename(filename)
     this.init()
   }
@@ -36,11 +35,12 @@ class Transformer {
   async transformAsync() {}
 
   log(options, type = 'info') {
-    logger[type] && logger[type]({
+    if (!this.logger || !this.logger[type]) return
+    this.logger[type]({
       ...options,
       filename: this.filename,
       parent: this.parent,
-      type: this.__proto__.constructor.name.replace('Transformer', '').toLowerCase()
+      type: this.__proto__.constructor.name.replace('Transformer', '').toLowerCase(),
     })
   }
 }

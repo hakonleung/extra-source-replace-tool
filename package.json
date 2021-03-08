@@ -23,7 +23,6 @@
   "lint-staged": {
     "*.{js,ts,tsx,jsx}": [
       "prettier --write",
-      "yarn jest",
       "git add"
     ]
   },
