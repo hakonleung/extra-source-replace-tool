@@ -41,6 +41,22 @@ const DEFAULT_OPTIONS = {
 }
 ```
 
+## ESRTCore
+generate transformer config and provide log function
+```js
+const { ESRTCore } = require('extra-source-replace-tool/src')
+
+const options = { injectBlockMethod: true }
+
+ESRTCore.getInstance(options, /* optional options type*/'WEFE') // generate or get singleton instance, with logger and options { ...defaultOptions, ...WEFEOptions, ...options }
+
+ESRTCore.getInstance().configure(options, /* reset options to default */ true, 'WEFE')
+
+ESRTCore.genOptions(options, 'WEFE') // generate new options
+
+new ESRTCore(options, 'WEFE') // generate new core, generally using to isolate for singleton instance
+```
+
 ## loader & plugin
 ```js
 const HtmlWebpackPlugin = require('html-webpack-plugin')
@@ -51,8 +67,6 @@ const ESRTCssLoader = 'extra-source-replace-tool/src/loaders/css-loader'
 
 // generate core instance and configure first
 ESRTCore.getInstance().configure(options, /* provide several default options */type)
-
-
 
 // webpack config
 const webpackConfig = {

@@ -6,6 +6,10 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const HtmlTransformer = require('../core/transformer/html')
 const ESRTCore = require('../core')
 
+/**
+ * @construtor
+ * @param {Object} core ESRTCore.getInstance() by default
+ */
 class HtmlWebpackESRTPlugin {
   constructor(core = ESRTCore.getInstance()) {
     this.core = core

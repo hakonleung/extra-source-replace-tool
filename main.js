@@ -1388,6 +1388,10 @@ const HtmlWebpackPlugin = __webpack_require__(23)
 const HtmlTransformer = __webpack_require__(24)
 const ESRTCore = __webpack_require__(1)
 
+/**
+ * @construtor
+ * @param {Object} core ESRTCore.getInstance() by default
+ */
 class HtmlWebpackESRTPlugin {
   constructor(core = ESRTCore.getInstance()) {
     this.core = core
