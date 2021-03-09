@@ -1,5 +1,4 @@
 const ts = require('typescript')
-const core = require('../core')
 
 function stringPlusToTemplateExpression(exp) {
   const isStringPlusExp = (node) => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
@@ -75,17 +74,20 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const matchAccess = (access, validAccesses) => {
-  const { global, globalAlias } = core.options
+const matchAccess = (access, validAccesses, options) => {
+  const { globalAlias } = options
   return (
     access &&
     access.length > 0 &&
     validAccesses.some((validAccess) => {
       let validStart = 0
       let accessStart = 0
-      if (validAccess[0] === global) {
+      if (typeof validAccess === 'string') {
+        validAccess = validAccess.split('.')
+      }
+      if (globalAlias.includes(validAccess[0])) {
         validStart = 1
-        if (access[0].text === global || globalAlias.includes(access[0].text)) {
+        if (globalAlias.includes(access[0].text)) {
           accessStart = 1
         }
       }
@@ -99,14 +101,22 @@ const matchAccess = (access, validAccesses) => {
   )
 }
 
-const isMatchAccess = (access, isCallExpression) => {
-  const { matchBinaryAccesses, matchCallAccesses } = core.options
-  return matchAccess(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
+const isMatchAccess = (access, isCallExpression, options) => {
+  const { transformerCgiEqualExprAccesses, transformerCgiCallExprAccesses } = options
+  return matchAccess(
+    access,
+    isCallExpression ? transformerCgiCallExprAccesses : transformerCgiEqualExprAccesses,
+    options
+  )
 }
 
-const isIgnoreAccess = (access, isCallExpression) => {
-  const { ignoreBinaryAccesses, ignoreCallAccesses } = core.options
-  return matchAccess(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
+const isIgnoreAccess = (access, isCallExpression, options) => {
+  const { transformerIgnoreEqualExprAccesses, transformerIgnoreCallExprAccesses } = options
+  return matchAccess(
+    access,
+    isCallExpression ? transformerIgnoreCallExprAccesses : transformerIgnoreEqualExprAccesses,
+    options
+  )
 }
 
 const getAccess = (node) => {
@@ -132,9 +142,8 @@ const getAccess = (node) => {
   return access
 }
 
-const isIgnoreFile = (filename, source, map) => {
-  const { options } = core
-  if (filename && options.ignorePath && options.ignorePath.test(filename)) return true
+const isIgnoreFile = (filename, source, map, options) => {
+  if (filename && options.transformerIgnorePathReg && options.transformerIgnorePathReg.test(filename)) return true
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
   const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
   return leadingComment && /@local-ignore/.test(leadingComment[0])

@@ -7,12 +7,12 @@ const {
   isIgnoreFile,
   printNode,
 } = require('utils/ast')
-const core = require('core/index')
+const ESRTCore = require('core/base')
 const { coreOptions, mockAccess } = require('test/helper')
 
-describe('ast', () => {
-  core.config(coreOptions.default, true)
+const options = ESRTCore.genOptions(coreOptions.default)
 
+describe('ast', () => {
   test('stringPlusToTemplateExpression', () => {
     let sourceFile = ts.createSourceFile('temp', `'a' + b + \`c\``, ts.ScriptTarget.Latest, true)
     let templateExpr = stringPlusToTemplateExpression(sourceFile.statements[0].expression)
@@ -41,13 +41,13 @@ describe('ast', () => {
       mockAccess(['open']),
       mockAccess(['global', 'open']),
     ]
-    expect(isMatchAccess(accesses[0])).toBeTruthy()
-    expect(isMatchAccess(accesses[0], true)).toBeFalsy()
-    expect(isMatchAccess(accesses[1])).toBeTruthy()
+    expect(isMatchAccess(accesses[0], false, options)).toBeTruthy()
+    expect(isMatchAccess(accesses[0], true, options)).toBeFalsy()
+    expect(isMatchAccess(accesses[1], false, options)).toBeTruthy()
 
-    expect(isMatchAccess(accesses[2])).toBeFalsy()
-    expect(isMatchAccess(accesses[3], true)).toBeTruthy()
-    expect(isMatchAccess(accesses[3], true)).toBeTruthy()
+    expect(isMatchAccess(accesses[2], false, options)).toBeFalsy()
+    expect(isMatchAccess(accesses[3], true, options)).toBeTruthy()
+    expect(isMatchAccess(accesses[3], true, options)).toBeTruthy()
   })
 
   test('isIgnoreAccess', () => {
@@ -59,16 +59,16 @@ describe('ast', () => {
       mockAccess(['ignore', 'ignoreBlock']),
       mockAccess(['window', 'ignore', 'ignoreBlock']),
     ]
-    expect(isIgnoreAccess(accesses[0])).toBeTruthy()
-    expect(isIgnoreAccess(accesses[0], true)).toBeFalsy()
-    expect(isIgnoreAccess(accesses[1])).toBeTruthy()
+    expect(isIgnoreAccess(accesses[0], false, options)).toBeTruthy()
+    expect(isIgnoreAccess(accesses[0], true, options)).toBeFalsy()
+    expect(isIgnoreAccess(accesses[1], false, options)).toBeTruthy()
 
-    expect(isIgnoreAccess(accesses[2])).toBeFalsy()
-    expect(isIgnoreAccess(accesses[3], true)).toBeTruthy()
-    expect(isIgnoreAccess(accesses[3], true)).toBeTruthy()
+    expect(isIgnoreAccess(accesses[2], false, options)).toBeFalsy()
+    expect(isIgnoreAccess(accesses[3], true, options)).toBeTruthy()
+    expect(isIgnoreAccess(accesses[3], true, options)).toBeTruthy()
 
-    expect(isIgnoreAccess(accesses[4])).toBeTruthy()
-    expect(isIgnoreAccess(accesses[5])).toBeFalsy()
+    expect(isIgnoreAccess(accesses[4], false, options)).toBeTruthy()
+    expect(isIgnoreAccess(accesses[5], false, options)).toBeFalsy()
   })
 
   test('getAccess', () => {
@@ -89,14 +89,14 @@ describe('ast', () => {
   })
 
   test('isIgnoreFile', () => {
-    core.config({ ignorePath: /ignore\//i }, true)
+    options.transformerIgnorePathReg = /ignore\//i
 
-    expect(isIgnoreFile('ignore/a')).toBeTruthy()
+    expect(isIgnoreFile('ignore/a', undefined, undefined, options)).toBeTruthy()
 
-    expect(isIgnoreFile('a', '@local-ignore')).toBeFalsy()
-    expect(isIgnoreFile('a', '// @local-ignore')).toBeTruthy()
-    expect(isIgnoreFile('a', '/* @local-ignore */')).toBeTruthy()
-    expect(isIgnoreFile('a', '@local-ignore', { sourcesContent: ['/* @local-ignore */'] })).toBeTruthy()
+    expect(isIgnoreFile('a', '@local-ignore', undefined, options)).toBeFalsy()
+    expect(isIgnoreFile('a', '// @local-ignore', undefined, options)).toBeTruthy()
+    expect(isIgnoreFile('a', '/* @local-ignore */', undefined, options)).toBeTruthy()
+    expect(isIgnoreFile('a', '@local-ignore', { sourcesContent: ['/* @local-ignore */'] }, options)).toBeTruthy()
   })
 
   test('printNode', () => {

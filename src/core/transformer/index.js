@@ -1,16 +1,16 @@
 const path = require('path')
+const ESRTCore = require('../base')
 
 class Transformer {
-  constructor({ code, map, meta, filename, parent, loader, plugin }, options = {}, logger) {
+  constructor({ code, map, meta, filename, parent, loader, plugin }, core = ESRTCore.getInstance()) {
     this.code = code
     this.map = map
     this.meta = meta
-    this.filename = filename ? path.relative(options.context || process.cwd(), filename) : `temp-${Date.now()}`
+    this.filename = filename ? path.relative(core.options.context || process.cwd(), filename) : `temp-${Date.now()}`
     this.parent = parent
-    this.options = options
     this.loader = loader
     this.plugin = plugin
-    this.logger = logger
+    this.core = core
     this.setFilename(filename)
     this.init()
   }
@@ -35,8 +35,9 @@ class Transformer {
   async transformAsync() {}
 
   log(options, type = 'info') {
-    if (!this.logger || !this.logger[type]) return
-    this.logger[type]({
+    const { logger } = this.core
+    if (!logger || !logger[type]) return
+    logger[type]({
       ...options,
       filename: this.filename,
       parent: this.parent,

@@ -3,12 +3,15 @@ const path = require('path')
 const plugins = require('./plugins')
 const modules = require('./modules')
 const { OUTPUT_PATH } = require('./constant')
-const core = require('../../src/core')
+const ESRTCore = require('../../src/core')
 
-core.config({
-  // requestTimeout: 50
-  loggerTransports: ['console', 'file']
-}, true)
+ESRTCore.getInstance().configure(
+  {
+    // requestTimeout: 50
+    loggerTransports: ['console', 'file'],
+  },
+  true
+)
 
 const obeserver = {}
 Object.defineProperty(obeserver, 'outputPath', {
@@ -48,7 +51,7 @@ const config = {
     colors: true,
   },
   resolve: {
-    extensions: [".ts", ".tsx", ".js"]
+    extensions: ['.ts', '.tsx', '.js'],
   },
 }
 
@@ -57,18 +60,18 @@ const compiler = webpack(config)
 // if (process.env.NODE_ENV === 'development') {
 //   devServer(compiler)
 // } else {
-  compiler.run((err, stats) => {
-    console.log(err)
-    console.log(
-      stats.toString({
-        all: false,
-        chunks: false,
-        errors: true,
-        errorDetails: false,
-        warnings: false,
-        timings: false,
-        colors: true,
-      })
-    )
-  })
+compiler.run((err, stats) => {
+  console.log(err)
+  console.log(
+    stats.toString({
+      all: false,
+      chunks: false,
+      errors: true,
+      errorDetails: false,
+      warnings: false,
+      timings: false,
+      colors: true,
+    })
+  )
+})
 // }

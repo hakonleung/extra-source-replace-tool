@@ -1,6 +1,8 @@
-const core = require('core/index')
+const ESRTCore = require('core/base')
 const { testUrl, getUrlFullInfo, parseStyleUrl, execStyleUrl, transformCgi } = require('utils/url-parser')
 const { href, invalidUrls, coreOptions, validSources, invalidSources } = require('test/helper')
+
+let options = ESRTCore.genOptions(coreOptions.default)
 
 describe('url-parser', () => {
   // toMatchObject
@@ -14,46 +16,44 @@ describe('url-parser', () => {
       expect(getUrlFullInfo(str)).toBeNull()
     })
 
-    core.config(coreOptions.default, true)
-
-    expect(getUrlFullInfo('a/b', true, core.options)).toMatchObject({
+    expect(getUrlFullInfo('a/b', true, options)).toMatchObject({
       inside: true,
-      protocol: core.options.protocol,
+      protocol: options.intraProtocol,
     })
 
-    expect(getUrlFullInfo('~a/b', true, core.options)).toMatchObject({
+    expect(getUrlFullInfo('~a/b', true, options)).toMatchObject({
       inside: true,
-      protocol: core.options.protocol,
+      protocol: options.intraProtocol,
     })
 
-    expect(getUrlFullInfo('//test.com/a/b', true, core.options)).toMatchObject({
+    expect(getUrlFullInfo('//test.com/a/b', true, options)).toMatchObject({
       inside: true,
-      protocol: core.options.protocol,
+      protocol: options.intraProtocol,
     })
 
-    expect(getUrlFullInfo('http://test.cn/a/b', true, core.options)).toMatchObject({
+    expect(getUrlFullInfo('http://test.cn/a/b', true, options)).toMatchObject({
       inside: true,
       protocol: 'http',
     })
 
-    expect(getUrlFullInfo('//test1.com/a/b', true, core.options)).toMatchObject({
+    expect(getUrlFullInfo('//test1.com/a/b', true, options)).toMatchObject({
       inside: false,
-      protocol: core.options.protocol,
+      protocol: options.intraProtocol,
     })
 
-    expect(getUrlFullInfo('http://test1.cn/a/b', false, core.options)).toMatchObject({
+    expect(getUrlFullInfo('http://test1.cn/a/b', false, options)).toMatchObject({
       inside: false,
       protocol: 'http',
       ext: '',
     })
 
-    expect(getUrlFullInfo('http://test1.cn/a/b.c', true, core.options)).toMatchObject({
+    expect(getUrlFullInfo('http://test1.cn/a/b.c', true, options)).toMatchObject({
       inside: false,
       protocol: 'http',
       ext: '',
     })
 
-    expect(getUrlFullInfo('http://test1.cn/a/b.c', false, core.options)).toMatchObject({
+    expect(getUrlFullInfo('http://test1.cn/a/b.c', false, options)).toMatchObject({
       inside: false,
       protocol: 'http',
       ext: 'c',
@@ -88,53 +88,42 @@ describe('url-parser', () => {
   })
 
   test('transformCgi', () => {
-    core.config(
-      {
-        transformCgi: (url) => 'test' + url,
-      },
-      true
-    )
+    options = ESRTCore.genOptions({ transformCgi: (url) => 'test' + url })
 
-    expect(transformCgi('/a/c', core.options)).toBe(core.options.transformCgi('/a/c'))
+    expect(transformCgi('/a/c', options)).toBe(options.transformCgi('/a/c'))
 
-    core.config(coreOptions.default, true)
+    options = ESRTCore.genOptions(coreOptions.default)
 
-    expect(transformCgi('/a/', core.options)).toBe('/cgi-bin/b/')
+    expect(transformCgi('/a/', options)).toBe('/cgi-bin/b/')
 
-    expect(transformCgi('/a/b', core.options)).toBe('/cgi-bin/b/c')
+    expect(transformCgi('/a/b', options)).toBe('/cgi-bin/b/c')
 
-    expect(transformCgi('/a/c', core.options)).toBe('/cgi-bin/b/c')
+    expect(transformCgi('/a/c', options)).toBe('/cgi-bin/b/c')
 
-    expect(transformCgi('/d/c', core.options)).toBe('/d/c')
+    expect(transformCgi('/d/c', options)).toBe('/d/c')
 
-    expect(transformCgi('/cgi-bin/b/b', core.options)).toBe('/cgi-bin/b/b')
+    expect(transformCgi('/cgi-bin/b/b', options)).toBe('/cgi-bin/b/b')
 
-    expect(transformCgi(getUrlFullInfo('/a/b', true, core.options), core.options)).toBe('/cgi-bin/b/c')
+    expect(transformCgi(getUrlFullInfo('/a/b', true, options), options)).toBe('/cgi-bin/b/c')
 
-    expect(() => transformCgi(1, core.options)).toThrowError('url`s type must be object or string!')
+    expect(() => transformCgi(1, options)).toThrowError('url`s type must be object or string!')
 
-    expect(transformCgi(null, core.options)).toBe('')
+    expect(transformCgi(null, options)).toBe('')
 
-    expect(transformCgi('//github.com/test', core.options)).toBe('//github.com/test')
+    expect(transformCgi('//github.com/test', options)).toBe('//github.com/test')
 
-    expect(transformCgi(invalidUrls[0], core.options)).toBe(invalidUrls[0])
+    expect(transformCgi(invalidUrls[0], options)).toBe(invalidUrls[0])
 
-    core.config({
-      blockIntraUrl: true,
-    })
+    options.intraBlock = true
 
-    expect(transformCgi('/d/c', core.options)).toBe('')
+    expect(transformCgi('/d/c', options)).toBe('')
 
-    core.config({
-      blockPaths: ['/a/c'],
-    })
+    options.intraBlockPaths = ['/a/c']
 
-    expect(transformCgi('/a/c', core.options)).toBe('')
+    expect(transformCgi('/a/c', options)).toBe('')
 
-    core.config({
-      blockExtraUrl: true,
-    })
+    options.extraBlock = true
 
-    expect(transformCgi('//github.com/test', core.options)).toBe('')
+    expect(transformCgi('//github.com/test', options)).toBe('')
   })
 })

@@ -13,16 +13,16 @@ return /******/ (() => { // webpackBootstrap
 /* 0 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const core = __webpack_require__(1)
-const cssLoader = __webpack_require__(2)
-const tsLoader = __webpack_require__(17)
-const HtmlPlugin = __webpack_require__(21)
-const CssTransformer = __webpack_require__(10)
-const TsTransformer = __webpack_require__(18)
-const HtmlTransformer = __webpack_require__(23)
+const ESRTCore = __webpack_require__(1)
+const cssLoader = __webpack_require__(7)
+const tsLoader = __webpack_require__(18)
+const HtmlPlugin = __webpack_require__(22)
+const CssTransformer = __webpack_require__(11)
+const TsTransformer = __webpack_require__(19)
+const HtmlTransformer = __webpack_require__(24)
 
 module.exports = {
-  core,
+  ESRTCore,
   cssLoader,
   tsLoader,
   HtmlPlugin,
@@ -31,46 +31,63 @@ module.exports = {
   HtmlTransformer,
 }
 
+
 /***/ }),
 /* 1 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const ESRTCore = __webpack_require__(2)
+const getLogger = __webpack_require__(3)
+
+ESRTCore.getLogger = getLogger
+
+module.exports = ESRTCore
+
+
+/***/ }),
+/* 2 */
 /***/ ((module) => {
 
 const DEFAULT_OPTIONS = {
-  protocol: 'https',
-  ignorePath: '',
-  context: process.cwd(),
-  global: 'window',
-  globalAlias: ['windowAsAny', 'global'],
-  origins: [],
-  matchBinaryAccesses: [
-    ['window', 'location'],
-    ['window', 'location', 'href'],
-  ],
-  matchCallAccesses: [
-    ['window', 'open'],
-    ['window', 'location', 'replace'],
-  ],
-  ignoreBinaryAccesses: [],
-  ignoreCallAccesses: [],
-  transformCgi: null,
-  blockExtraUrl: false,
-  blockPaths: [],
-  blockIntraUrl: false,
-  l1PathMap: {},
-  l2PathMap: {},
-  injectBlockMethod: false,
-  requestTimeout: 3000,
-  requestRetryTimes: 3,
-  loggerTransports: ['file'],
-  loggerCodeLength: 100,
-  loggerDataToJson: true,
+  context: process.cwd(), // root path, used to generate relative filepath
+
+  extraBlock: false, // whether transform extra path to empty string
+
+  globalAlias: ['window', 'windowAsAny', 'global'], // default top level object
+
+  injectBlockMethod: false, // whether inject method which proxy ajax and window.open to document`s head tag
+
+  intraBlock: false, // whether transform intra path which is not in intraPathTopLevelRules to empty string
+  intraBlockPaths: [], // intra path which is always transformed to empty string
+  intraHosts: [], // hosts regarded as intra host
+  intraPathSecondLevelRules: {}, // second level intra path transformed rules
+  intraPathTopLevelRules: {}, // top level intra path transformed rules, for example, { test: 'testcgi' } means '/test/a' should be transformed to '/testcgi/a'
+  intraProtocol: 'https', // default protocol
+
+  loggerCodeLength: 100, // intercept log code
+  loggerDataToJson: true, // save structured log info to json file
+  loggerTransports: ['file'], // logger transports, optional config are file and console
+
+  requestRetryTimes: 3, // fetch retry times
+  requestTimeout: 3000, // fetch timeout
+
+  transformCgi: null, // method which transform intra cgi
+
+  transformerCgiEqualExprAccesses: ['window.location', 'window.location.href'], // expr.right regarded as cgi url, for example, 'window.location.href = 'xxx'' means xxx regarded as cgi url
+  transformerCgiCallExprAccesses: ['window.open', 'window.location.replace'], // expr.arguments[0] regarded as cgi url
+  transformerIgnoreEqualExprAccesses: [], // ignore binary expression with equal operation
+  transformerIgnoreCallExprAccesses: [],
+  transformerIgnorePathReg: null, // regexp used to ignore filepath
 }
 
 const DEFAULT_OPTION_MAP = {
   WEFE: {
-    origins: ['https://doc.weixin.qq.com'],
-    // blockPaths: ['/txdoc/getauthinfo', '/info/report'],
-    l1PathMap: {
+    // intraBlockPaths: ['/txdoc/getauthinfo', '/info/report'],
+
+    transformerIgnoreCallExprAccesses: ['tencentDocOpenUrl'],
+    injectBlockMethod: true,
+
+    intraPathTopLevelRules: {
       doc: '/cgi-bin/doc',
       wedoc: '/cgi-bin/doc',
       txdoc: '/cgi-bin/doc',
@@ -78,42 +95,212 @@ const DEFAULT_OPTION_MAP = {
       disk: '/cgi-bin/disk',
       info: '/cgi-bin/disk',
     },
-    l2PathMap: {
-      getinfo: 'get_info'
+    intraPathSecondLevelRules: {
+      getinfo: 'get_info',
     },
-    injectBlockMethod: true,
-    ignoreBinaryAccesses: [],
-    ignoreCallAccesses: [
-      ['tencentDocOpenUrl']
-    ],
-  }
+
+    intraHosts: ['doc.weixin.qq.com'],
+  },
 }
 
-const core = {
-  options: DEFAULT_OPTIONS
-}
-
-core.config = (options, reset, type = 'WEFE') => {
-  if (reset) {
-    core.options = {
+class ESRTCore {
+  static genOptions(options, type = 'WEFE') {
+    return {
       ...DEFAULT_OPTIONS,
       ...(type && DEFAULT_OPTION_MAP[type] ? DEFAULT_OPTION_MAP[type] : {}),
+      ...(typeof options === 'object' ? options : {}),
     }
   }
-  core.options = {
-    ...core.options,
-    ...(typeof options === 'object' ? options : {})
+
+  static getInstance(options, type = 'WEFE') {
+    return (ESRTCore.instance = ESRTCore.instance || new ESRTCore(options, type))
+  }
+
+  constructor(options, type = 'WEFE') {
+    this.configure(options, true, type)
+    this.initLogger()
+  }
+
+  configure(options, reset, type = 'WEFE') {
+    if (reset) {
+      this.options = {
+        ...DEFAULT_OPTIONS,
+        ...(type && DEFAULT_OPTION_MAP[type] ? DEFAULT_OPTION_MAP[type] : {}),
+      }
+    }
+    this.options = {
+      ...this.options,
+      ...(typeof options === 'object' ? options : {}),
+    }
+    return this
+  }
+
+  initLogger() {
+    if (ESRTCore.getLogger) {
+      this.logger = ESRTCore.getLogger(this)
+    }
   }
 }
 
-module.exports = core
+module.exports = ESRTCore
+
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const factory = __webpack_require__(3)
-const CssTransformer = __webpack_require__(10)
+const path = __webpack_require__(4)
+const fs = __webpack_require__(5)
+const winston = __webpack_require__(6)
+
+// const dirname = path.resolve(process.cwd(), 'esrtlogs')
+// if (fs.existsSync(filename)) fs.unlinkSync(filename)
+const basename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}`)
+const filename = basename + '.log'
+
+function formateDate() {
+  const now = new Date()
+  const date = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()]
+  return date.join('-') + '/' + time.join(':')
+}
+
+winston.addColors({
+  error: 'red',
+  warn: 'yellow',
+  info: 'cyan',
+  debug: 'green',
+})
+
+const TRANSPORTS_MAP = {
+  console: new winston.transports.Console({
+    colorize: true,
+    prettyPrint: true,
+    timestamp() {
+      return new Date().toLocaleTimeString()
+    },
+  }),
+  file: new winston.transports.File({ filename, level: 'info' }),
+}
+
+const getLogger = (coreInstance) => {
+  const logger = winston.createLogger({
+    format: winston.format.simple(),
+    transports: (coreInstance.options.loggerTransports || ['file']).map((key) => TRANSPORTS_MAP[key]),
+  })
+  logger.__logDataCache = {}
+  logger.callback = () => {
+    if (!coreInstance.options.loggerDataToJson) return
+    fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
+      if (err) throw err
+      console.log('Data written to file')
+    })
+  }
+
+  const levels = {
+    error: 0,
+    warn: 1,
+    info: 2,
+    http: 3,
+    verbose: 4,
+    debug: 5,
+    silly: 6,
+  }
+
+  const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, coreInstance.options.loggerCodeLength)
+
+  const cacheLogData = (data) => {
+    if (!coreInstance.options.loggerDataToJson) return
+    const { type, filename, parent } = data
+    const key = parent || filename
+    const newData = { ...data }
+    delete newData.parent
+    delete newData.filename
+    if (!key) {
+      delete newData.type
+      if (!logger.__logDataCache[type]) {
+        logger.__logDataCache[type] = []
+      }
+      logger.__logDataCache[type].push(newData)
+      return
+    }
+    if (!logger.__logDataCache[type]) {
+      logger.__logDataCache[type] = {}
+    }
+    newData.type = parent ? 'child' : 'current'
+    if (logger.__logDataCache[type][key]) {
+      logger.__logDataCache[type][key].push(newData)
+    } else {
+      logger.__logDataCache[type][key] = [newData]
+    }
+  }
+
+  const wrapper = (f) => (data) => {
+    cacheLogData(data)
+    const { type, filename, parent, from, to, code, transformed, error, info } = data
+    const arr = ['']
+    if (parent) {
+      arr.push(`parent: ${parent}`)
+    } else if (filename) {
+      arr.push(`current: ${filename}`)
+    }
+    if (from) {
+      arr.push(`${from} => ${to || from}`)
+    }
+    if (code) {
+      arr.push(`code: ${formatCode(code)}`)
+    }
+    if (transformed) {
+      arr.push(`transformed: ${formatCode(transformed)}`)
+    }
+    if (error) {
+      arr.push(error)
+    }
+    if (info) {
+      arr.push(info)
+    }
+    const tag = `[ESRT-${type}]`
+    return f.call(logger, arr.join(`\n${tag}`))
+  }
+
+  Object.keys(levels).forEach((method) => {
+    const f = logger[method]
+    logger[method] = wrapper(f)
+  })
+
+  return logger
+}
+
+module.exports = getLogger
+
+
+/***/ }),
+/* 4 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("path");;
+
+/***/ }),
+/* 5 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("fs");;
+
+/***/ }),
+/* 6 */
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("winston");;
+
+/***/ }),
+/* 7 */
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const factory = __webpack_require__(8)
+const CssTransformer = __webpack_require__(11)
 
 module.exports = factory(CssTransformer, {
   nocache: true
@@ -121,23 +308,23 @@ module.exports = factory(CssTransformer, {
 
 
 /***/ }),
-/* 3 */
+/* 8 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const { isIgnoreFile } = __webpack_require__(4)
-const core = __webpack_require__(1)
-const logger = __webpack_require__(6)
+const { isIgnoreFile } = __webpack_require__(9)
+const ESRTCore = __webpack_require__(1)
+const logger = __webpack_require__(3)
 
 module.exports = (Transformer, options = {}) => {
   return function (code, map, meta) {
     const filename = this.currentRequest.split('!').slice(-1)[0]
-    if (isIgnoreFile(filename, code, map)) {
+    if (isIgnoreFile(filename, code, map, ESRTCore.getInstance().options)) {
       return code
     }
     if (options.nocache && typeof this.cacheable === 'function') {
       this.cacheable(false)
     }
-    const transformer = new Transformer({ code, map, meta, filename, loader: this }, core.options, logger)
+    const transformer = new Transformer({ code, map, meta, filename, loader: this }, ESRTCore.getInstance())
     if (options.sync) {
       return transformer.transform()
     }
@@ -151,11 +338,10 @@ module.exports = (Transformer, options = {}) => {
 
 
 /***/ }),
-/* 4 */
+/* 9 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const ts = __webpack_require__(5)
-const core = __webpack_require__(1)
+const ts = __webpack_require__(10)
 
 function stringPlusToTemplateExpression(exp) {
   const isStringPlusExp = (node) => ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken
@@ -231,17 +417,20 @@ function stringPlusToTemplateExpression(exp) {
   return ts.createTemplateExpression(head, tspan)
 }
 
-const matchAccess = (access, validAccesses) => {
-  const { global, globalAlias } = core.options
+const matchAccess = (access, validAccesses, options) => {
+  const { globalAlias } = options
   return (
     access &&
     access.length > 0 &&
     validAccesses.some((validAccess) => {
       let validStart = 0
       let accessStart = 0
-      if (validAccess[0] === global) {
+      if (typeof validAccess === 'string') {
+        validAccess = validAccess.split('.')
+      }
+      if (globalAlias.includes(validAccess[0])) {
         validStart = 1
-        if (access[0].text === global || globalAlias.includes(access[0].text)) {
+        if (globalAlias.includes(access[0].text)) {
           accessStart = 1
         }
       }
@@ -255,14 +444,22 @@ const matchAccess = (access, validAccesses) => {
   )
 }
 
-const isMatchAccess = (access, isCallExpression) => {
-  const { matchBinaryAccesses, matchCallAccesses } = core.options
-  return matchAccess(access, isCallExpression ? matchCallAccesses : matchBinaryAccesses)
+const isMatchAccess = (access, isCallExpression, options) => {
+  const { transformerCgiEqualExprAccesses, transformerCgiCallExprAccesses } = options
+  return matchAccess(
+    access,
+    isCallExpression ? transformerCgiCallExprAccesses : transformerCgiEqualExprAccesses,
+    options
+  )
 }
 
-const isIgnoreAccess = (access, isCallExpression) => {
-  const { ignoreBinaryAccesses, ignoreCallAccesses } = core.options
-  return matchAccess(access, isCallExpression ? ignoreCallAccesses : ignoreBinaryAccesses)
+const isIgnoreAccess = (access, isCallExpression, options) => {
+  const { transformerIgnoreEqualExprAccesses, transformerIgnoreCallExprAccesses } = options
+  return matchAccess(
+    access,
+    isCallExpression ? transformerIgnoreCallExprAccesses : transformerIgnoreEqualExprAccesses,
+    options
+  )
 }
 
 const getAccess = (node) => {
@@ -288,9 +485,8 @@ const getAccess = (node) => {
   return access
 }
 
-const isIgnoreFile = (filename, source, map) => {
-  const { options } = core
-  if (filename && options.ignorePath && options.ignorePath.test(filename)) return true
+const isIgnoreFile = (filename, source, map, options) => {
+  if (filename && options.transformerIgnorePathReg && options.transformerIgnorePathReg.test(filename)) return true
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
   const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
   return leadingComment && /@local-ignore/.test(leadingComment[0])
@@ -311,175 +507,20 @@ module.exports = {
 
 
 /***/ }),
-/* 5 */
+/* 10 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("typescript");;
 
 /***/ }),
-/* 6 */
+/* 11 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const path = __webpack_require__(7)
-const fs = __webpack_require__(8)
-const winston = __webpack_require__(9)
-const core = __webpack_require__(1)
-
-// const dirname = path.resolve(process.cwd(), 'esrtlogs')
-// if (fs.existsSync(filename)) fs.unlinkSync(filename)
-const basename = path.resolve(process.cwd(), `esrtlogs/${formateDate()}`)
-const filename = basename + '.log'
-
-function formateDate() {
-  const now = new Date()
-  const date = [
-    now.getFullYear(),
-    now.getMonth() + 1,
-    now.getDate()
-  ]
-  const time = [
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds(),
-    now.getMilliseconds()
-  ]
-  return date.join('-') + '/' + time.join(':')
-}
-
-winston.addColors({
-  error: 'red',
-  warn: 'yellow',
-  info: 'cyan',
-  debug: 'green'
-})
-
-const TRANSPORTS_MAP = {
-  console: new winston.transports.Console({
-    colorize: true,
-    prettyPrint: true,
-    timestamp() {
-      return new Date().toLocaleTimeString()
-    },
-  }),
-  file: new winston.transports.File({ filename, level: 'info' }),
-}
-
-const logger = winston.createLogger({
-  format: winston.format.simple(),
-  transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
-})
-logger.__logDataCache = {}
-logger.callback = () => {
-  if (!core.options.loggerDataToJson) return
-  fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
-      if (err) throw err
-      console.log('Data written to file')
-  });
-}
-
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3,
-  verbose: 4,
-  debug: 5,
-  silly: 6
-}
-
-const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, core.options.loggerCodeLength)
-
-const cacheLogData = (data) => {
-  if (!core.options.loggerDataToJson) return
-  const { type, filename, parent } = data
-  const key = parent || filename
-  const newData = { ...data }
-  delete newData.parent
-  delete newData.filename
-  if (!key) {
-    delete newData.type
-    if (!logger.__logDataCache[type]) {
-      logger.__logDataCache[type] = []
-    }
-    logger.__logDataCache[type].push(newData)
-    return
-  }
-  if (!logger.__logDataCache[type]) {
-    logger.__logDataCache[type] = {}
-  }
-  newData.type = parent ? 'child' : 'current'
-  if (logger.__logDataCache[type][key]) {
-    logger.__logDataCache[type][key].push(newData)
-  } else {
-    logger.__logDataCache[type][key] = [newData]
-  }
-}
-
-const wrapper = (f) => (data) => {
-  cacheLogData(data)
-  const { type, filename, parent, from, to, code, transformed, error, info } = data
-  const arr = ['']
-  if (parent) {
-    arr.push(`parent: ${parent}`)
-  } else if (filename) {
-    arr.push(`current: ${filename}`)
-  }
-  if (from) {
-    arr.push(`${from} => ${to || from}`)
-  }
-  if (code) {
-    arr.push(`code: ${formatCode(code)}`)
-  }
-  if (transformed) {
-    arr.push(`transformed: ${formatCode(transformed)}`)
-  }
-  if (error) {
-    arr.push(error)
-  } 
-  if (info) {
-    arr.push(info)
-  }
-  const tag = `[ESRT-${type}]`
-  return f.call(logger, arr.join(`\n${tag}`))
-}
-
-Object.keys(levels).forEach(method => {
-  const f = logger[method]
-  logger[method] = wrapper(f)
-})
-
-module.exports = logger
-
-/***/ }),
-/* 7 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("path");;
-
-/***/ }),
-/* 8 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("fs");;
-
-/***/ }),
-/* 9 */
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("winston");;
-
-/***/ }),
-/* 10 */
-/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
-
-const postcss = __webpack_require__(11)
-const { getParseBase64Promise } = __webpack_require__(12)
-const { parseStyleUrl } = __webpack_require__(15)
-const Transformer = __webpack_require__(16)
+const postcss = __webpack_require__(12)
+const { getParseBase64Promise } = __webpack_require__(13)
+const { parseStyleUrl } = __webpack_require__(16)
+const Transformer = __webpack_require__(17)
 
 class CssTransformer extends Transformer {
   init() {
@@ -503,28 +544,26 @@ class CssTransformer extends Transformer {
       })
     })
 
-    return Promise.all(transformList.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
-      (values) => {
-        values.forEach((v, i) => {
-          if (!v) return
-          const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
-          this.log({
-            code: transformList[i].node.value,
-            transformed: newCode,
-          })
-          transformList[i].node.value = newCode
+    return Promise.all(transformList.map(({ href }) => getParseBase64Promise(href, this.core))).then((values) => {
+      values.forEach((v, i) => {
+        if (!v) return
+        const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
+        this.log({
+          code: transformList[i].node.value,
+          transformed: newCode,
         })
-        const result = this.root.toResult({ map: { prev: this.map, inline: false } })
-        result.meta = {
-          ast: {
-            type: 'postcss',
-            version: result.processor.version,
-            root: result.root,
-          },
-        }
-        return result
+        transformList[i].node.value = newCode
+      })
+      const result = this.root.toResult({ map: { prev: this.map, inline: false } })
+      result.meta = {
+        ast: {
+          type: 'postcss',
+          version: result.processor.version,
+          root: result.root,
+        },
       }
-    )
+      return result
+    })
   }
 }
 
@@ -532,19 +571,19 @@ module.exports = CssTransformer
 
 
 /***/ }),
-/* 11 */
+/* 12 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("postcss");;
 
 /***/ }),
-/* 12 */
+/* 13 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const http = __webpack_require__(13)
-const https = __webpack_require__(14)
-const { getUrlFullInfo } = __webpack_require__(15)
+const http = __webpack_require__(14)
+const https = __webpack_require__(15)
+const { getUrlFullInfo } = __webpack_require__(16)
 
 const sourceCache = new Map()
 
@@ -557,7 +596,7 @@ const isSupportExt = (ext) => {
   return ext && !/^(html?|exe|apk)$/i.test(ext)
 }
 
-const httpGet = (url, cb, options, logger) =>
+const httpGet = (url, cb, { options, logger } = {}) =>
   new Promise((resolve, reject) => {
     const fullInfo = getUrlFullInfo(url, false, options)
     if (!fullInfo || fullInfo.inside || !isSupportExt(fullInfo.ext) || !FETCH_PROTOCOL[fullInfo.protocol]) {
@@ -617,7 +656,7 @@ const httpGet = (url, cb, options, logger) =>
     fetch()
   })
 
-const getParseBase64Promise = (url, options, logger) =>
+const getParseBase64Promise = (url, core) =>
   httpGet(
     url,
     (data, promise) => {
@@ -625,11 +664,10 @@ const getParseBase64Promise = (url, options, logger) =>
       const { resolve } = promise
       resolve(`data:${res.headers['content-type']};base64,` + Buffer.concat(chunks, size).toString('base64'))
     },
-    options,
-    logger
+    core
   )
 
-const getParseJsPromise = (url, options, logger) =>
+const getParseJsPromise = (url, core) =>
   httpGet(
     url,
     (data, promise) => {
@@ -637,8 +675,7 @@ const getParseJsPromise = (url, options, logger) =>
       const { resolve } = promise
       resolve(Buffer.concat(chunks, size).toString('utf8'))
     },
-    options,
-    logger
+    core
   )
 
 module.exports = {
@@ -648,27 +685,35 @@ module.exports = {
 
 
 /***/ }),
-/* 13 */
+/* 14 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("http");;
 
 /***/ }),
-/* 14 */
+/* 15 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("https");;
 
 /***/ }),
-/* 15 */
+/* 16 */
 /***/ ((module) => {
 
 const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#%`
 const VALID_CHARS = {
-  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[;:@&=+$,/?#'%]/g, '').split('').join('\\'),
-  host: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#'%]/g, '').split('').join('\\'),
+  pathname:
+    'a-z0-9\\' +
+    URL_VALID_CHARS.replace(/[;:@&=+$,/?#'%]/g, '')
+      .split('')
+      .join('\\'),
+  host:
+    'a-z0-9\\' +
+    URL_VALID_CHARS.replace(/[.;:@&=+$,/?#'%]/g, '')
+      .split('')
+      .join('\\'),
   hash: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
   search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
 }
@@ -677,10 +722,10 @@ const URL_REGS = {
   pathname: `(^[${VALID_CHARS.pathname}]+)?((\\/[${VALID_CHARS.pathname}]+)+\\/?|\\/)`,
   host: `([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(\\:\\d+)?`,
   hash: `#[${VALID_CHARS.hash}]*`,
-  search: `\\?[${VALID_CHARS.search}]*`
+  search: `\\?[${VALID_CHARS.search}]*`,
 }
 const _w = (name, group) => `(${group ? `?<${name}>` : ''}${URL_REGS[name]})`
-Object.keys(URL_REGS).forEach(v => {
+Object.keys(URL_REGS).forEach((v) => {
   URL_REGS[v + '_g'] = _w(v, true)
   URL_REGS[v] = _w(v)
 })
@@ -698,8 +743,8 @@ const URL_REG_NO_GROUP_ALL = new RegExp(`^(${URL_REG_NO_GROUP.source})$`, URL_RE
 const testUrl = (str, all) => str && (all ? URL_REG_NO_GROUP_ALL : URL_REG_NO_GROUP).test(str)
 
 const execUrlNormalize = (groups, options = {}) => {
-  const defaultProtocol = options.protocol || 'http'
-  Object.keys(groups).forEach(key => {
+  const defaultProtocol = options.intraProtocol || 'http'
+  Object.keys(groups).forEach((key) => {
     if (key === 'protocol') {
       if (groups[key] !== undefined) {
         const [protocol, slash] = groups[key].split(':')
@@ -745,7 +790,7 @@ const parseUrl = (str, options = {}) => {
   if (!res || res[0] !== str) return null
   res = {
     href: res[0],
-    ...res.groups
+    ...res.groups,
   }
   return execUrlNormalize(res, options)
 }
@@ -754,9 +799,12 @@ const FULL_INFO_CACHE = new Map()
 const getUrlFullInfo = (str, incomplete, options = {}) => {
   if (!incomplete && FULL_INFO_CACHE.has(str)) return FULL_INFO_CACHE.get(str)
   const location = parseUrl(str, options)
-  if (!location || !location.host && !location.pathname) return null
+  if (!location || (!location.host && !location.pathname)) return null
   location.ext = ''
-  location.inside = !!(!location.host && location.pathname || options.origins && options.origins.includes(location.origin))
+  location.inside = !!(
+    (!location.host && location.pathname) ||
+    (options.intraHosts && options.intraHosts.includes(location.host))
+  )
   // empty ext regarded as source, though cgi
   if (!incomplete) {
     location.ext = (/\.([0-0a-z]+)$/i.exec(location.pathname) || [])[1] || ''
@@ -778,7 +826,7 @@ const getExecResult = (str, reg, condition = true) => {
   const regG = new RegExp(reg, 'g')
   const result = []
   let cur
-  while (cur = regG.exec(str)) {
+  while ((cur = regG.exec(str))) {
     if (!cur[0]) break
     if (typeof condition === 'function' ? condition(cur) : condition) {
       result.push(cur.groups)
@@ -808,17 +856,17 @@ const transformCgi = (url, options = {}) => {
   // not url
   if (!urlObj) return url
   // extra
-  if (!urlObj.inside) return options.blockExtraUrl ? '' : url
+  if (!urlObj.inside) return options.extraBlock ? '' : url
   // block path
-  if (options.blockPaths.includes(urlObj.pathname)) return ''
-  const l1Paths = Object.keys(options.l1PathMap)
+  if (options.intraBlockPaths.includes(urlObj.pathname)) return ''
+  const l1Paths = Object.keys(options.intraPathTopLevelRules)
   // don`t need to transform
-  if (l1Paths.some((key) => urlObj.pathname.indexOf(options.l1PathMap[key]) === 0)) return url
-  const levelPaths = urlObj.pathname.split('/').filter(v => v)
+  if (l1Paths.some((key) => urlObj.pathname.indexOf(options.intraPathTopLevelRules[key]) === 0)) return url
+  const levelPaths = urlObj.pathname.split('/').filter((v) => v)
   // can`t transform
-  if (!l1Paths.includes(levelPaths[0])) return options.blockIntraUrl ? '' : url
-  levelPaths[0] = options.l1PathMap[levelPaths[0]]
-  levelPaths[1] = options.l2PathMap[levelPaths[1]] || levelPaths[1]
+  if (!l1Paths.includes(levelPaths[0])) return options.intraBlock ? '' : url
+  levelPaths[0] = options.intraPathTopLevelRules[levelPaths[0]]
+  levelPaths[1] = options.intraPathSecondLevelRules[levelPaths[1]] || levelPaths[1]
   return levelPaths.join('/') + (urlObj.hash || urlObj.search)
 }
 
@@ -828,26 +876,27 @@ module.exports = {
   parseStyleUrl,
   execUrl,
   execStyleUrl,
-  transformCgi
+  transformCgi,
 }
 
+
 /***/ }),
-/* 16 */
+/* 17 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const path = __webpack_require__(7)
+const path = __webpack_require__(4)
+const ESRTCore = __webpack_require__(2)
 
 class Transformer {
-  constructor({ code, map, meta, filename, parent, loader, plugin }, options = {}, logger) {
+  constructor({ code, map, meta, filename, parent, loader, plugin }, core = ESRTCore.getInstance()) {
     this.code = code
     this.map = map
     this.meta = meta
-    this.filename = filename ? path.relative(options.context || process.cwd(), filename) : `temp-${Date.now()}`
+    this.filename = filename ? path.relative(core.options.context || process.cwd(), filename) : `temp-${Date.now()}`
     this.parent = parent
-    this.options = options
     this.loader = loader
     this.plugin = plugin
-    this.logger = logger
+    this.core = core
     this.setFilename(filename)
     this.init()
   }
@@ -872,8 +921,9 @@ class Transformer {
   async transformAsync() {}
 
   log(options, type = 'info') {
-    if (!this.logger || !this.logger[type]) return
-    this.logger[type]({
+    const { logger } = this.core
+    if (!logger || !logger[type]) return
+    logger[type]({
       ...options,
       filename: this.filename,
       parent: this.parent,
@@ -886,29 +936,29 @@ module.exports = Transformer
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const factory = __webpack_require__(3)
-const TsTransformer = __webpack_require__(18)
+const factory = __webpack_require__(8)
+const TsTransformer = __webpack_require__(19)
 
 module.exports = factory(TsTransformer)
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const ts = __webpack_require__(5)
-const TsProcessor = __webpack_require__(19)
-const { transformCgi } = __webpack_require__(15)
-const { getParseBase64Promise } = __webpack_require__(12)
-const { printNode } = __webpack_require__(4)
-const Transformer = __webpack_require__(16)
+const ts = __webpack_require__(10)
+const TsProcessor = __webpack_require__(20)
+const { transformCgi } = __webpack_require__(16)
+const { getParseBase64Promise } = __webpack_require__(13)
+const { printNode } = __webpack_require__(9)
+const Transformer = __webpack_require__(17)
 
 class TsTransformer extends Transformer {
   init() {
     this.sourceFile = ts.createSourceFile(this.filename, this.code, ts.ScriptTarget.Latest, /*setParentNodes */ true)
-    this.processor = new TsProcessor(this.sourceFile, this.options)
+    this.processor = new TsProcessor(this.sourceFile, this.core.options)
   }
 
   transformAsync() {
@@ -920,9 +970,7 @@ class TsTransformer extends Transformer {
         const { location, locations, node, text } = cs
         if (!ts.isTemplateExpression(node) && (locations || (location.ext && location.ext !== 'js'))) {
           // not support template
-          const promises = (locations || [location]).map(({ href }) =>
-            getParseBase64Promise(href, this.options, this.logger)
-          )
+          const promises = (locations || [location]).map(({ href }) => getParseBase64Promise(href, this.core))
           let newText = text
           return Promise.all(promises)
             .then((res) =>
@@ -951,9 +999,9 @@ class TsTransformer extends Transformer {
       // cgi
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
-      const newUrl = transformCgi(location, this.options)
+      const newUrl = transformCgi(location, this.core.options)
       if (
-        (!location.inside && !this.options.blockExtraUrl) ||
+        (!location.inside && !this.core.options.extraBlock) ||
         newUrl === (ts.isTemplateExpression(node) ? node.head.text : node.text)
       )
         return Promise.resolve()
@@ -1014,13 +1062,13 @@ module.exports = TsTransformer
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
-const ts = __webpack_require__(5)
-const { getUrlFullInfo, execStyleUrl } = __webpack_require__(15)
-const { getAccess, isMatchAccess, isIgnoreAccess, printNode } = __webpack_require__(4)
-const Changeset = __webpack_require__(20)
+const ts = __webpack_require__(10)
+const { getUrlFullInfo, execStyleUrl } = __webpack_require__(16)
+const { getAccess, isMatchAccess, isIgnoreAccess, printNode } = __webpack_require__(9)
+const Changeset = __webpack_require__(21)
 
 const keywords = 'align-content align-items align-self all animation animation-delay animation-direction animation-duration animation-fill-mode animation-iteration-count animation-name animation-play-state animation-timing-function backface-visibility background background-attachment background-blend-mode background-clip background-color background-image background-origin background-position background-repeat background-size border border-bottom border-bottom-color border-bottom-left-radius border-bottom-right-radius border-bottom-style border-bottom-width border-collapse border-color border-image border-image-outset border-image-repeat border-image-slice border-image-source border-image-width border-left border-left-color border-left-style border-left-width border-radius border-right border-right-color border-right-style border-right-width border-spacing border-style border-top border-top-color border-top-left-radius border-top-right-radius border-top-style border-top-width border-width bottom box-decoration-break box-shadow box-sizing break-after break-before break-inside caption-side caret-color @charset clear clip color column-count column-fill column-gap column-rule column-rule-color column-rule-style column-rule-width column-span column-width columns content counter-increment counter-reset cursor direction display empty-cells filter flex flex-basis flex-direction flex-flow flex-grow flex-shrink flex-wrap float font @font-face font-family font-feature-settings @font-feature-values font-kerning font-language-override font-size font-size-adjust font-stretch font-style font-synthesis font-variant font-variant-alternates font-variant-caps font-variant-east-asian font-variant-ligatures font-variant-numeric font-variant-position font-weight grid grid-area grid-auto-columns grid-auto-flow grid-auto-rows grid-column grid-column-end grid-column-gap grid-column-start grid-gap grid-row grid-row-end grid-row-gap grid-row-start grid-template grid-template-areas grid-template-columns grid-template-rows hanging-punctuation height hyphens image-rendering @import isolation justify-content @keyframes left letter-spacing line-break line-height list-style list-style-image list-style-position list-style-type margin margin-bottom margin-left margin-right margin-top max-height max-width @media min-height min-width mix-blend-mode object-fit object-position opacity order orphans outline outline-color outline-offset outline-style outline-width overflow overflow-wrap overflow-x overflow-y padding padding-bottom padding-left padding-right padding-top page-break-after page-break-before page-break-inside perspective perspective-origin pointer-events position quotes resize right scroll-behavior tab-size table-layout text-align text-align-last text-combine-upright text-decoration text-decoration-color text-decoration-line text-decoration-style text-indent text-justify text-orientation text-overflow text-shadow text-transform text-underline-position top transform transform-origin transform-style transition transition-delay transition-duration transition-property transition-timing-function unicode-bidi user-select vertical-align visibility white-space widows width word-break word-spacing word-wrap writing-mode z-index box-orient box-align box-pack'.split(
   ' '
@@ -1233,8 +1281,8 @@ class TsProcessor {
       argsEntry = 'arguments'
     }
     const access = getAccess(expr[accessEntry])
-    if (isIgnoreAccess(access, isCallExpression)) return { ignore: true }
-    if (!isMatchAccess(access, isCallExpression)) return
+    if (isIgnoreAccess(access, isCallExpression, this.options)) return { ignore: true }
+    if (!isMatchAccess(access, isCallExpression, this.options)) return
     const child = expr[argsEntry] instanceof Array ? expr[argsEntry][0] : expr[argsEntry]
     if (!child) return
     let childChangeset = new Changeset(this.sourceFile)
@@ -1256,7 +1304,7 @@ module.exports = TsProcessor
 
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ ((module) => {
 
 class Changeset {
@@ -1329,26 +1377,29 @@ module.exports = Changeset
 
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 // If your plugin is direct dependent to the html webpack plugin:
-const HtmlWebpackPlugin = __webpack_require__(22)
+const HtmlWebpackPlugin = __webpack_require__(23)
 // If your plugin is using html-webpack-plugin as an optional dependency
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
-const HtmlTransformer = __webpack_require__(23)
-const logger = __webpack_require__(6)
-const core = __webpack_require__(1)
+const HtmlTransformer = __webpack_require__(24)
+const ESRTCore = __webpack_require__(1)
 
 class HtmlWebpackESRTPlugin {
+  constructor(core = ESRTCore.getInstance()) {
+    this.core = core
+  }
+
   apply(compiler) {
     compiler.hooks.compilation.tap('ESRTPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync('ESRTPlugin', (data, cb) =>
-        new HtmlTransformer({ code: data.html, plugin: data.plugin }, core.options, logger)
+        new HtmlTransformer({ code: data.html, plugin: data.plugin }, this.core)
           .transformAsync()
           .then((html) => cb(null, { ...data, html }))
-          .then(() => logger.callback())
+          .then(() => this.core.logger.callback())
           .catch((e) => cb(e))
       )
     })
@@ -1359,27 +1410,27 @@ module.exports = HtmlWebpackESRTPlugin
 
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("html-webpack-plugin");;
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 var __dirname = "src/core/transformer";
-const htmlparser2 = __webpack_require__(24)
-const domSerializer = __webpack_require__(25)
-const domHandler = __webpack_require__(26)
-const { getParseBase64Promise, getParseJsPromise } = __webpack_require__(12)
-const { testUrl, parseStyleUrl, execStyleUrl } = __webpack_require__(15)
-const Transformer = __webpack_require__(16)
-const TsTransformer = __webpack_require__(18)
-const CssTransformer = __webpack_require__(10)
-const fs = __webpack_require__(8)
-const path = __webpack_require__(7)
+const htmlparser2 = __webpack_require__(25)
+const domSerializer = __webpack_require__(26)
+const domHandler = __webpack_require__(27)
+const { getParseBase64Promise, getParseJsPromise } = __webpack_require__(13)
+const { testUrl, parseStyleUrl, execStyleUrl } = __webpack_require__(16)
+const Transformer = __webpack_require__(17)
+const TsTransformer = __webpack_require__(19)
+const CssTransformer = __webpack_require__(11)
+const fs = __webpack_require__(5)
+const path = __webpack_require__(4)
 
 const addNode = (node, parent, type = 'prepend') => {
   // type append prepend reset
@@ -1404,39 +1455,33 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static getInjectJs(instance = { log: () => {}, options: {} }) {
-    if (!instance.options.injectBlockMethod) return null
+  static getInjectJs(options) {
     if (!HtmlTransformer.injectJsCache) {
-      try {
-        const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
-        HtmlTransformer.injectJsCache = file.replace(
-          '__OPTIONS__',
-          JSON.stringify(instance.options).replace(/"/g, '\\"')
-        )
-        instance.log({
-          info: 'inject success!',
-        })
-      } catch (error) {
-        instance.log(
-          {
-            error,
-            info: 'inject error!',
-          },
-          'error'
-        )
-      }
+      const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
+      HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(options).replace(/"/g, '\\"'))
     }
     return HtmlTransformer.injectJsCache || null
   }
 
   injectJs(head) {
-    const js = HtmlTransformer.getInjectJs(this)
-    if (!js) return
-    if (!head) {
-      head = new domHandler.Element('head')
-      addNode(head, this.root)
+    const { options } = this.core
+    if (!options.injectBlockMethod) return
+    try {
+      const js = HtmlTransformer.getInjectJs(options)
+      if (!head) {
+        head = new domHandler.Element('head')
+        addNode(head, this.root)
+      }
+      addNode(new domHandler.Element('script', {}, [new domHandler.Text(js)]), head)
+    } catch (error) {
+      this.log(
+        {
+          error,
+          info: 'inject error!',
+        },
+        'error'
+      )
     }
-    addNode(new domHandler.Element('script', {}, [new domHandler.Text(js)]), head)
   }
 
   init() {
@@ -1491,23 +1536,22 @@ class HtmlTransformer extends Transformer {
     if (attr === 'style') {
       // style attr
       const extractResult = execStyleUrl(node.attribs[attr], true)
-      return Promise.all(extractResult.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
-        (res) =>
-          res.forEach((v, i) => {
-            if (!v) return
-            const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
-            this.log({
-              from: 'tag attr style',
-              code: node.attribs[attr],
-              transformed: newCode,
-            })
-            node.attribs[attr] = newCode
+      return Promise.all(extractResult.map(({ href }) => getParseBase64Promise(href, this.core))).then((res) =>
+        res.forEach((v, i) => {
+          if (!v) return
+          const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
+          this.log({
+            from: 'tag attr style',
+            code: node.attribs[attr],
+            transformed: newCode,
           })
+          node.attribs[attr] = newCode
+        })
       )
     } else if (attr) {
       if (attr === 'src' && node.name === 'script') {
         // js src
-        return getParseJsPromise(node.attribs[attr], this.options, this.logger).then((v) => {
+        return getParseJsPromise(node.attribs[attr], this.core).then((v) => {
           if (!v) return
           this.log({
             from: 'script attr src',
@@ -1521,7 +1565,7 @@ class HtmlTransformer extends Transformer {
         })
       } else {
         // other link
-        return getParseBase64Promise(node.attribs[attr], this.options, this.logger).then((v) => {
+        return getParseBase64Promise(node.attribs[attr], this.core).then((v) => {
           if (!v) return
           this.log({
             from: 'tag attr href',
@@ -1533,12 +1577,10 @@ class HtmlTransformer extends Transformer {
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
-      return new transformer({ code: text, parent: this.filename }, this.options, this.logger)
-        .transformAsync()
-        .then((res) => {
-          const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
-          addNode(newTextNode, node, 'reset')
-        })
+      return new transformer({ code: text, parent: this.filename }, this.core).transformAsync().then((res) => {
+        const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
+        addNode(newTextNode, node, 'reset')
+      })
     }
   }
 
@@ -1558,21 +1600,21 @@ module.exports = HtmlTransformer
 
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("htmlparser2");;
 
 /***/ }),
-/* 25 */
+/* 26 */
 /***/ ((module) => {
 
 "use strict";
 module.exports = require("dom-serializer");;
 
 /***/ }),
-/* 26 */
+/* 27 */
 /***/ ((module) => {
 
 "use strict";

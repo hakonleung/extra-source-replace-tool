@@ -32,39 +32,33 @@ const addNode = (node, parent, type = 'prepend') => {
 }
 
 class HtmlTransformer extends Transformer {
-  static getInjectJs(instance = { log: () => {}, options: {} }) {
-    if (!instance.options.injectBlockMethod) return null
+  static getInjectJs(options) {
     if (!HtmlTransformer.injectJsCache) {
-      try {
-        const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
-        HtmlTransformer.injectJsCache = file.replace(
-          '__OPTIONS__',
-          JSON.stringify(instance.options).replace(/"/g, '\\"')
-        )
-        instance.log({
-          info: 'inject success!',
-        })
-      } catch (error) {
-        instance.log(
-          {
-            error,
-            info: 'inject error!',
-          },
-          'error'
-        )
-      }
+      const file = fs.readFileSync(path.resolve(__dirname, '../../inject/inject.production.js'), 'utf-8')
+      HtmlTransformer.injectJsCache = file.replace('__OPTIONS__', JSON.stringify(options).replace(/"/g, '\\"'))
     }
     return HtmlTransformer.injectJsCache || null
   }
 
   injectJs(head) {
-    const js = HtmlTransformer.getInjectJs(this)
-    if (!js) return
-    if (!head) {
-      head = new domHandler.Element('head')
-      addNode(head, this.root)
+    const { options } = this.core
+    if (!options.injectBlockMethod) return
+    try {
+      const js = HtmlTransformer.getInjectJs(options)
+      if (!head) {
+        head = new domHandler.Element('head')
+        addNode(head, this.root)
+      }
+      addNode(new domHandler.Element('script', {}, [new domHandler.Text(js)]), head)
+    } catch (error) {
+      this.log(
+        {
+          error,
+          info: 'inject error!',
+        },
+        'error'
+      )
     }
-    addNode(new domHandler.Element('script', {}, [new domHandler.Text(js)]), head)
   }
 
   init() {
@@ -119,23 +113,22 @@ class HtmlTransformer extends Transformer {
     if (attr === 'style') {
       // style attr
       const extractResult = execStyleUrl(node.attribs[attr], true)
-      return Promise.all(extractResult.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
-        (res) =>
-          res.forEach((v, i) => {
-            if (!v) return
-            const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
-            this.log({
-              from: 'tag attr style',
-              code: node.attribs[attr],
-              transformed: newCode,
-            })
-            node.attribs[attr] = newCode
+      return Promise.all(extractResult.map(({ href }) => getParseBase64Promise(href, this.core))).then((res) =>
+        res.forEach((v, i) => {
+          if (!v) return
+          const newCode = node.attribs[attr].replace(extractResult[i].origin, v)
+          this.log({
+            from: 'tag attr style',
+            code: node.attribs[attr],
+            transformed: newCode,
           })
+          node.attribs[attr] = newCode
+        })
       )
     } else if (attr) {
       if (attr === 'src' && node.name === 'script') {
         // js src
-        return getParseJsPromise(node.attribs[attr], this.options, this.logger).then((v) => {
+        return getParseJsPromise(node.attribs[attr], this.core).then((v) => {
           if (!v) return
           this.log({
             from: 'script attr src',
@@ -149,7 +142,7 @@ class HtmlTransformer extends Transformer {
         })
       } else {
         // other link
-        return getParseBase64Promise(node.attribs[attr], this.options, this.logger).then((v) => {
+        return getParseBase64Promise(node.attribs[attr], this.core).then((v) => {
           if (!v) return
           this.log({
             from: 'tag attr href',
@@ -161,12 +154,10 @@ class HtmlTransformer extends Transformer {
       }
     } else {
       const transformer = node.name === 'script' ? TsTransformer : CssTransformer
-      return new transformer({ code: text, parent: this.filename }, this.options, this.logger)
-        .transformAsync()
-        .then((res) => {
-          const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
-          addNode(newTextNode, node, 'reset')
-        })
+      return new transformer({ code: text, parent: this.filename }, this.core).transformAsync().then((res) => {
+        const newTextNode = new domHandler.Text(node.name === 'script' ? res : res.css)
+        addNode(newTextNode, node, 'reset')
+      })
     }
   }
 

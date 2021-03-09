@@ -1,7 +1,15 @@
 const URL_VALID_CHARS = `-_.~!*'();:@&=+$,/?#%`
 const VALID_CHARS = {
-  pathname: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[;:@&=+$,/?#'%]/g, '').split('').join('\\'),
-  host: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[.;:@&=+$,/?#'%]/g, '').split('').join('\\'),
+  pathname:
+    'a-z0-9\\' +
+    URL_VALID_CHARS.replace(/[;:@&=+$,/?#'%]/g, '')
+      .split('')
+      .join('\\'),
+  host:
+    'a-z0-9\\' +
+    URL_VALID_CHARS.replace(/[.;:@&=+$,/?#'%]/g, '')
+      .split('')
+      .join('\\'),
   hash: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
   search: 'a-z0-9\\' + URL_VALID_CHARS.replace(/[?#']/g, '').split('').join('\\'),
 }
@@ -10,10 +18,10 @@ const URL_REGS = {
   pathname: `(^[${VALID_CHARS.pathname}]+)?((\\/[${VALID_CHARS.pathname}]+)+\\/?|\\/)`,
   host: `([${VALID_CHARS.host}])+(\\.[${VALID_CHARS.host}]+)+(\\:\\d+)?`,
   hash: `#[${VALID_CHARS.hash}]*`,
-  search: `\\?[${VALID_CHARS.search}]*`
+  search: `\\?[${VALID_CHARS.search}]*`,
 }
 const _w = (name, group) => `(${group ? `?<${name}>` : ''}${URL_REGS[name]})`
-Object.keys(URL_REGS).forEach(v => {
+Object.keys(URL_REGS).forEach((v) => {
   URL_REGS[v + '_g'] = _w(v, true)
   URL_REGS[v] = _w(v)
 })
@@ -31,8 +39,8 @@ const URL_REG_NO_GROUP_ALL = new RegExp(`^(${URL_REG_NO_GROUP.source})$`, URL_RE
 const testUrl = (str, all) => str && (all ? URL_REG_NO_GROUP_ALL : URL_REG_NO_GROUP).test(str)
 
 const execUrlNormalize = (groups, options = {}) => {
-  const defaultProtocol = options.protocol || 'http'
-  Object.keys(groups).forEach(key => {
+  const defaultProtocol = options.intraProtocol || 'http'
+  Object.keys(groups).forEach((key) => {
     if (key === 'protocol') {
       if (groups[key] !== undefined) {
         const [protocol, slash] = groups[key].split(':')
@@ -78,7 +86,7 @@ const parseUrl = (str, options = {}) => {
   if (!res || res[0] !== str) return null
   res = {
     href: res[0],
-    ...res.groups
+    ...res.groups,
   }
   return execUrlNormalize(res, options)
 }
@@ -87,9 +95,12 @@ const FULL_INFO_CACHE = new Map()
 const getUrlFullInfo = (str, incomplete, options = {}) => {
   if (!incomplete && FULL_INFO_CACHE.has(str)) return FULL_INFO_CACHE.get(str)
   const location = parseUrl(str, options)
-  if (!location || !location.host && !location.pathname) return null
+  if (!location || (!location.host && !location.pathname)) return null
   location.ext = ''
-  location.inside = !!(!location.host && location.pathname || options.origins && options.origins.includes(location.origin))
+  location.inside = !!(
+    (!location.host && location.pathname) ||
+    (options.intraHosts && options.intraHosts.includes(location.host))
+  )
   // empty ext regarded as source, though cgi
   if (!incomplete) {
     location.ext = (/\.([0-0a-z]+)$/i.exec(location.pathname) || [])[1] || ''
@@ -111,7 +122,7 @@ const getExecResult = (str, reg, condition = true) => {
   const regG = new RegExp(reg, 'g')
   const result = []
   let cur
-  while (cur = regG.exec(str)) {
+  while ((cur = regG.exec(str))) {
     if (!cur[0]) break
     if (typeof condition === 'function' ? condition(cur) : condition) {
       result.push(cur.groups)
@@ -141,17 +152,17 @@ const transformCgi = (url, options = {}) => {
   // not url
   if (!urlObj) return url
   // extra
-  if (!urlObj.inside) return options.blockExtraUrl ? '' : url
+  if (!urlObj.inside) return options.extraBlock ? '' : url
   // block path
-  if (options.blockPaths.includes(urlObj.pathname)) return ''
-  const l1Paths = Object.keys(options.l1PathMap)
+  if (options.intraBlockPaths.includes(urlObj.pathname)) return ''
+  const l1Paths = Object.keys(options.intraPathTopLevelRules)
   // don`t need to transform
-  if (l1Paths.some((key) => urlObj.pathname.indexOf(options.l1PathMap[key]) === 0)) return url
-  const levelPaths = urlObj.pathname.split('/').filter(v => v)
+  if (l1Paths.some((key) => urlObj.pathname.indexOf(options.intraPathTopLevelRules[key]) === 0)) return url
+  const levelPaths = urlObj.pathname.split('/').filter((v) => v)
   // can`t transform
-  if (!l1Paths.includes(levelPaths[0])) return options.blockIntraUrl ? '' : url
-  levelPaths[0] = options.l1PathMap[levelPaths[0]]
-  levelPaths[1] = options.l2PathMap[levelPaths[1]] || levelPaths[1]
+  if (!l1Paths.includes(levelPaths[0])) return options.intraBlock ? '' : url
+  levelPaths[0] = options.intraPathTopLevelRules[levelPaths[0]]
+  levelPaths[1] = options.intraPathSecondLevelRules[levelPaths[1]] || levelPaths[1]
   return levelPaths.join('/') + (urlObj.hash || urlObj.search)
 }
 
@@ -161,5 +172,5 @@ module.exports = {
   parseStyleUrl,
   execUrl,
   execStyleUrl,
-  transformCgi
+  transformCgi,
 }

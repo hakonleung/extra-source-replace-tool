@@ -8,7 +8,7 @@ const Transformer = require('.')
 class TsTransformer extends Transformer {
   init() {
     this.sourceFile = ts.createSourceFile(this.filename, this.code, ts.ScriptTarget.Latest, /*setParentNodes */ true)
-    this.processor = new TsProcessor(this.sourceFile, this.options)
+    this.processor = new TsProcessor(this.sourceFile, this.core.options)
   }
 
   transformAsync() {
@@ -20,9 +20,7 @@ class TsTransformer extends Transformer {
         const { location, locations, node, text } = cs
         if (!ts.isTemplateExpression(node) && (locations || (location.ext && location.ext !== 'js'))) {
           // not support template
-          const promises = (locations || [location]).map(({ href }) =>
-            getParseBase64Promise(href, this.options, this.logger)
-          )
+          const promises = (locations || [location]).map(({ href }) => getParseBase64Promise(href, this.core))
           let newText = text
           return Promise.all(promises)
             .then((res) =>
@@ -51,9 +49,9 @@ class TsTransformer extends Transformer {
       // cgi
       const { node, location } = targetCs
       if (location.ext) return Promise.resolve()
-      const newUrl = transformCgi(location, this.options)
+      const newUrl = transformCgi(location, this.core.options)
       if (
-        (!location.inside && !this.options.blockExtraUrl) ||
+        (!location.inside && !this.core.options.extraBlock) ||
         newUrl === (ts.isTemplateExpression(node) ? node.head.text : node.text)
       )
         return Promise.resolve()

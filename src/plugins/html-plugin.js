@@ -4,17 +4,20 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = require('../core/transformer/html')
-const logger = require('../utils/logger')
-const core = require('../core')
+const ESRTCore = require('../core')
 
 class HtmlWebpackESRTPlugin {
+  constructor(core = ESRTCore.getInstance()) {
+    this.core = core
+  }
+
   apply(compiler) {
     compiler.hooks.compilation.tap('ESRTPlugin', (compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).beforeEmit.tapAsync('ESRTPlugin', (data, cb) =>
-        new HtmlTransformer({ code: data.html, plugin: data.plugin }, core.options, logger)
+        new HtmlTransformer({ code: data.html, plugin: data.plugin }, this.core)
           .transformAsync()
           .then((html) => cb(null, { ...data, html }))
-          .then(() => logger.callback())
+          .then(() => this.core.logger.callback())
           .catch((e) => cb(e))
       )
     })

@@ -25,28 +25,26 @@ class CssTransformer extends Transformer {
       })
     })
 
-    return Promise.all(transformList.map(({ href }) => getParseBase64Promise(href, this.options, this.logger))).then(
-      (values) => {
-        values.forEach((v, i) => {
-          if (!v) return
-          const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
-          this.log({
-            code: transformList[i].node.value,
-            transformed: newCode,
-          })
-          transformList[i].node.value = newCode
+    return Promise.all(transformList.map(({ href }) => getParseBase64Promise(href, this.core))).then((values) => {
+      values.forEach((v, i) => {
+        if (!v) return
+        const newCode = transformList[i].node.value.replace(transformList[i].origin, v)
+        this.log({
+          code: transformList[i].node.value,
+          transformed: newCode,
         })
-        const result = this.root.toResult({ map: { prev: this.map, inline: false } })
-        result.meta = {
-          ast: {
-            type: 'postcss',
-            version: result.processor.version,
-            root: result.root,
-          },
-        }
-        return result
+        transformList[i].node.value = newCode
+      })
+      const result = this.root.toResult({ map: { prev: this.map, inline: false } })
+      result.meta = {
+        ast: {
+          type: 'postcss',
+          version: result.processor.version,
+          root: result.root,
+        },
       }
-    )
+      return result
+    })
   }
 }
 

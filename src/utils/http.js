@@ -13,7 +13,7 @@ const isSupportExt = (ext) => {
   return ext && !/^(html?|exe|apk)$/i.test(ext)
 }
 
-const httpGet = (url, cb, options, logger) =>
+const httpGet = (url, cb, { options, logger } = {}) =>
   new Promise((resolve, reject) => {
     const fullInfo = getUrlFullInfo(url, false, options)
     if (!fullInfo || fullInfo.inside || !isSupportExt(fullInfo.ext) || !FETCH_PROTOCOL[fullInfo.protocol]) {
@@ -73,7 +73,7 @@ const httpGet = (url, cb, options, logger) =>
     fetch()
   })
 
-const getParseBase64Promise = (url, options, logger) =>
+const getParseBase64Promise = (url, core) =>
   httpGet(
     url,
     (data, promise) => {
@@ -81,11 +81,10 @@ const getParseBase64Promise = (url, options, logger) =>
       const { resolve } = promise
       resolve(`data:${res.headers['content-type']};base64,` + Buffer.concat(chunks, size).toString('base64'))
     },
-    options,
-    logger
+    core
   )
 
-const getParseJsPromise = (url, options, logger) =>
+const getParseJsPromise = (url, core) =>
   httpGet(
     url,
     (data, promise) => {
@@ -93,8 +92,7 @@ const getParseJsPromise = (url, options, logger) =>
       const { resolve } = promise
       resolve(Buffer.concat(chunks, size).toString('utf8'))
     },
-    options,
-    logger
+    core
   )
 
 module.exports = {

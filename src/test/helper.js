@@ -19,20 +19,16 @@ const invalidUrls = [
 const coreOptions = {
   default: {
     loggerTransports: [],
-    origins: ['https://test.com', 'http://test.cn'],
-    // blockPaths: ['/txdoc/getauthinfo', '/info/report'],
-    l1PathMap: {
+    intraHosts: ['test.com', 'test.cn'],
+    intraPathTopLevelRules: {
       a: '/cgi-bin/b',
     },
-    l2PathMap: {
+    intraPathSecondLevelRules: {
       b: 'c',
     },
     injectBlockMethod: true,
-    ignoreBinaryAccesses: [
-      ['window', 'ignore', 'ignore'],
-      ['ignore', 'ignoreBlock'],
-    ],
-    ignoreCallAccesses: [['window', 'ignoreFunction']],
+    transformerIgnoreEqualExprAccesses: ['window.ignore.ignore', 'ignore.ignoreBlock'],
+    transformerIgnoreCallExprAccesses: ['window.ignoreFunction'],
   },
 }
 

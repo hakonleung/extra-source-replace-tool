@@ -1,7 +1,6 @@
 const path = require('path')
 const fs = require('fs')
 const winston = require('winston')
-const core = require('../core')
 
 // const dirname = path.resolve(process.cwd(), 'esrtlogs')
 // if (fs.existsSync(filename)) fs.unlinkSync(filename)
@@ -10,17 +9,8 @@ const filename = basename + '.log'
 
 function formateDate() {
   const now = new Date()
-  const date = [
-    now.getFullYear(),
-    now.getMonth() + 1,
-    now.getDate()
-  ]
-  const time = [
-    now.getHours(),
-    now.getMinutes(),
-    now.getSeconds(),
-    now.getMilliseconds()
-  ]
+  const date = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds()]
   return date.join('-') + '/' + time.join(':')
 }
 
@@ -28,7 +18,7 @@ winston.addColors({
   error: 'red',
   warn: 'yellow',
   info: 'cyan',
-  debug: 'green'
+  debug: 'green',
 })
 
 const TRANSPORTS_MAP = {
@@ -42,88 +32,92 @@ const TRANSPORTS_MAP = {
   file: new winston.transports.File({ filename, level: 'info' }),
 }
 
-const logger = winston.createLogger({
-  format: winston.format.simple(),
-  transports: (core.options.loggerTransports || ['file']).map(key => TRANSPORTS_MAP[key])
-})
-logger.__logDataCache = {}
-logger.callback = () => {
-  if (!core.options.loggerDataToJson) return
-  fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
+const getLogger = (coreInstance) => {
+  const logger = winston.createLogger({
+    format: winston.format.simple(),
+    transports: (coreInstance.options.loggerTransports || ['file']).map((key) => TRANSPORTS_MAP[key]),
+  })
+  logger.__logDataCache = {}
+  logger.callback = () => {
+    if (!coreInstance.options.loggerDataToJson) return
+    fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
       if (err) throw err
       console.log('Data written to file')
-  });
-}
+    })
+  }
 
-const levels = {
-  error: 0,
-  warn: 1,
-  info: 2,
-  http: 3,
-  verbose: 4,
-  debug: 5,
-  silly: 6
-}
+  const levels = {
+    error: 0,
+    warn: 1,
+    info: 2,
+    http: 3,
+    verbose: 4,
+    debug: 5,
+    silly: 6,
+  }
 
-const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, core.options.loggerCodeLength)
+  const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, coreInstance.options.loggerCodeLength)
 
-const cacheLogData = (data) => {
-  if (!core.options.loggerDataToJson) return
-  const { type, filename, parent } = data
-  const key = parent || filename
-  const newData = { ...data }
-  delete newData.parent
-  delete newData.filename
-  if (!key) {
-    delete newData.type
-    if (!logger.__logDataCache[type]) {
-      logger.__logDataCache[type] = []
+  const cacheLogData = (data) => {
+    if (!coreInstance.options.loggerDataToJson) return
+    const { type, filename, parent } = data
+    const key = parent || filename
+    const newData = { ...data }
+    delete newData.parent
+    delete newData.filename
+    if (!key) {
+      delete newData.type
+      if (!logger.__logDataCache[type]) {
+        logger.__logDataCache[type] = []
+      }
+      logger.__logDataCache[type].push(newData)
+      return
     }
-    logger.__logDataCache[type].push(newData)
-    return
+    if (!logger.__logDataCache[type]) {
+      logger.__logDataCache[type] = {}
+    }
+    newData.type = parent ? 'child' : 'current'
+    if (logger.__logDataCache[type][key]) {
+      logger.__logDataCache[type][key].push(newData)
+    } else {
+      logger.__logDataCache[type][key] = [newData]
+    }
   }
-  if (!logger.__logDataCache[type]) {
-    logger.__logDataCache[type] = {}
+
+  const wrapper = (f) => (data) => {
+    cacheLogData(data)
+    const { type, filename, parent, from, to, code, transformed, error, info } = data
+    const arr = ['']
+    if (parent) {
+      arr.push(`parent: ${parent}`)
+    } else if (filename) {
+      arr.push(`current: ${filename}`)
+    }
+    if (from) {
+      arr.push(`${from} => ${to || from}`)
+    }
+    if (code) {
+      arr.push(`code: ${formatCode(code)}`)
+    }
+    if (transformed) {
+      arr.push(`transformed: ${formatCode(transformed)}`)
+    }
+    if (error) {
+      arr.push(error)
+    }
+    if (info) {
+      arr.push(info)
+    }
+    const tag = `[ESRT-${type}]`
+    return f.call(logger, arr.join(`\n${tag}`))
   }
-  newData.type = parent ? 'child' : 'current'
-  if (logger.__logDataCache[type][key]) {
-    logger.__logDataCache[type][key].push(newData)
-  } else {
-    logger.__logDataCache[type][key] = [newData]
-  }
+
+  Object.keys(levels).forEach((method) => {
+    const f = logger[method]
+    logger[method] = wrapper(f)
+  })
+
+  return logger
 }
 
-const wrapper = (f) => (data) => {
-  cacheLogData(data)
-  const { type, filename, parent, from, to, code, transformed, error, info } = data
-  const arr = ['']
-  if (parent) {
-    arr.push(`parent: ${parent}`)
-  } else if (filename) {
-    arr.push(`current: ${filename}`)
-  }
-  if (from) {
-    arr.push(`${from} => ${to || from}`)
-  }
-  if (code) {
-    arr.push(`code: ${formatCode(code)}`)
-  }
-  if (transformed) {
-    arr.push(`transformed: ${formatCode(transformed)}`)
-  }
-  if (error) {
-    arr.push(error)
-  } 
-  if (info) {
-    arr.push(info)
-  }
-  const tag = `[ESRT-${type}]`
-  return f.call(logger, arr.join(`\n${tag}`))
-}
-
-Object.keys(levels).forEach(method => {
-  const f = logger[method]
-  logger[method] = wrapper(f)
-})
-
-module.exports = logger
+module.exports = getLogger

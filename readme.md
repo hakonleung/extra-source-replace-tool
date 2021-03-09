@@ -3,82 +3,97 @@
 ## config
 ```js
 const DEFAULT_OPTIONS = {
-  protocol: 'https', // url parser
-  ignorePath: null, // ignore filepath regexp
-  context: process.cwd(), // root path
-  global: 'window', // default top variable
-  globalAlias: ['windowAsAny', 'global'],
-  origins: [], // url origins regarded as intra source
-  matchBinaryAccesses: [
-    ['window', 'location'],
-    ['window', 'location', 'href'],
-  ],
-  matchCallAccesses: [
-    ['window', 'open'],
-    ['window', 'location', 'replace'],
-  ],
-  ignoreBinaryAccesses: [], // ignore binary expression, for example, [['location', 'href']] means ignore 'window.location.href = 'xxx''
-  ignoreCallAccesses: [],
-  transformCgi: null, // method which transform intra cgi
-  blockExtraUrl: false, // if trusy, transform extra path to empty string
-  blockPaths: [], // intra path which transformed to empty string
-  blockIntraUrl: false, // if trusy, transform intra path which l1PathMap dont include to empty string
-  l1PathMap: {}, // top level intra path transform to
-  l2PathMap: {}, // second level intra path transform to
-  injectBlockMethod: false, // inject method which proxy ajax and window.open to document`s head tag
-  requestTimeout: 3000, // fetch timeout
+  context: process.cwd(), // root path, used to generate relative filepath
+
+  extraBlock: false, // whether transform extra path to empty string
+
+  globalAlias: ['window', 'windowAsAny', 'global'], // default top level object
+
+  injectBlockMethod: false, // whether inject method which proxy ajax and window.open to document`s head tag
+
+  intraBlock: false, // whether transform intra path which is not in intraPathTopLevelRules to empty string
+  intraBlockPaths: [], // intra path which is always transformed to empty string
+  intraHosts: [], // hosts regarded as intra host
+  intraPathSecondLevelRules: {}, // second level intra path transformed rules
+  intraPathTopLevelRules: {}, // top level intra path transformed rules, for example, { test: 'testcgi' } means '/test/a' should be transformed to '/testcgi/a'
+  intraProtocol: 'https', // default protocol
+
+  loggerCodeLength: 100, // intercept log code
+  loggerDataToJson: true, // save structured log info to json file
+  loggerTransports: ['file'], // logger transports, optional config are file and console
+
   requestRetryTimes: 3, // fetch retry times
+  requestTimeout: 3000, // fetch timeout
+  
+  transformCgi: null, // method which transform intra cgi
+
+  transformerCgiEqualExprAccesses: [
+    'window.location',
+    'window.location.href',
+  ], // expr.right regarded as cgi url, for example, 'window.location.href = 'xxx'' means xxx regarded as cgi url
+  transformerCgiCallExprAccesses: [
+    'window.open',
+    'window.location.replace',
+  ], // expr.arguments[0] regarded as cgi url
+  transformerIgnoreEqualExprAccesses: [], // ignore binary expression with equal operation
+  transformerIgnoreCallExprAccesses: [],
+  transformerIgnorePathReg: null, // regexp used to ignore filepath
 }
 ```
 
-## loader
-```js
-const ESRTool_CORE = require('extra-source-replace-tool/src/core')
-ESRTool_CORE.config({}, true)
-
-const ESRT_TS_LOADER = 'extra-source-replace-tool/src/loaders/ts-loader'
-const ESRT_CSS_LOADER = 'extra-source-replace-tool/src/loaders/css-loader'
-
-// webpack config module.rules
-const rules = {
-  {
-    test: /\.ts(x?)$/,
-    loader: ['babel-loader', 'ts-loader', ESRT_TS_LOADER],
-  },
-  {
-    test: /\.js$/,
-    loader: ['babel-loader', ESRT_TS_LOADER],
-  },
-  {
-    test: /css/,
-    loader: [ESRT_CSS_LOADER, 'postcss-loader']
-  }
-}
-```
-
-## plugin
+## loader & plugin
 ```js
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const { core, HtmlPlugin } = require('extra-source-replace-tool')
-core.config({}, true)
+const { ESRTCore, HtmlPlugin: ESRTHtmlPlugin } = require('extra-source-replace-tool/src')
 
-const plugins = [
-  new HtmlWebpackPlugin(),
-  new HtmlPlugin(),
-]
+const ESRTTsLoader = 'extra-source-replace-tool/src/loaders/ts-loader'
+const ESRTCssLoader = 'extra-source-replace-tool/src/loaders/css-loader'
+
+// generate core instance and configure first
+ESRTCore.getInstance().configure(options, /* provide several default options */type)
+
+
+
+// webpack config
+const webpackConfig = {
+  module: {
+    rules: {
+      {
+        test: /\.ts(x?)$/,
+        loader: ['babel-loader', 'ts-loader', /* before ts-loader */ESRTTsLoader],
+      },
+      {
+        test: /\.js$/,
+        loader: ['babel-loader', ESRTTsLoader],
+      },
+      {
+        test: /css/,
+        loader: [/* share meta.ast when used after postcss-loader */ESRTCssLoader, 'postcss-loader']
+      }
+    }
+  },
+  plugins: [
+    new HtmlWebpackPlugin(),
+    /* depend on HtmlWebpackPlugin */new ESRTHtmlPlugin(),
+  ]
+}
 ```
+
 
 ## node api
 ```js
 const {
-  core,
+  ESRTCore,
   CssTransformer,
   TsTransformer,
   HtmlTransformer,
-} = require('extra-source-replace-tool')
-core.config({}, true)
+} = require('extra-source-replace-tool/src')
+
+ESRTCore.getInstance().configure(options, /* provide several default options */type)
 
 new TsTransformer({ code: someCode })
   .transformAsync()
-  .then(newCode => {})
+  .then(transformedCode => {
+    // do something
+  })
 ```
