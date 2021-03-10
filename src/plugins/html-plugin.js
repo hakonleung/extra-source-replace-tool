@@ -21,7 +21,7 @@ class HtmlWebpackESRTPlugin {
         new HtmlTransformer({ code: data.html, plugin: data.plugin }, this.core)
           .transformAsync()
           .then((html) => cb(null, { ...data, html }))
-          .then(() => this.core.logger.callback())
+          .then(() => this.core.logger.writeDataToJson())
           .catch((e) => cb(e))
       )
     })

@@ -1,8 +1,8 @@
 const { ESRTCore } = require('index')
 const { testUrl, getUrlFullInfo, parseStyleUrl, execStyleUrl, transformCgi } = require('utils/url-parser')
-const { href, invalidUrls, coreOptions, validSources } = require('test/helpers/mock')
+const { href, invalidUrls, validSources } = require('test/helpers/mock')
 
-let options = ESRTCore.genOptions(coreOptions.default)
+let options = ESRTCore.genOptions(undefined, 'TEST2')
 
 describe('url-parser', () => {
   // toMatchObject
@@ -88,11 +88,11 @@ describe('url-parser', () => {
   })
 
   test('transformCgi', () => {
-    options = ESRTCore.genOptions({ transformCgi: (url) => 'test' + url }, 'TEST')
+    options = ESRTCore.genOptions({ transformCgi: (url) => 'test' + url }, 'TEST1')
 
     expect(transformCgi('/a/c', options)).toBe(options.transformCgi('/a/c'))
 
-    options = ESRTCore.genOptions(coreOptions.default)
+    options = ESRTCore.genOptions(undefined, 'TEST2')
 
     expect(transformCgi('/a/', options)).toBe('/cgi-bin/b/')
 

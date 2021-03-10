@@ -11,7 +11,7 @@ describe('TsTransformer', () => {
         {
           code: fs.readFileSync(path.resolve(process.cwd(), './test/src/index.ts'), 'utf-8'),
         },
-        new ESRTCore(undefined, 'TEST')
+        new ESRTCore(undefined, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(`import * as ReactDom from 'react-dom'
 import JSX from './test.tsx'
@@ -65,7 +65,7 @@ window.addEventListener('load', () => {
           filename: 'temp.tsx', // must provide tsx ext or ScriptKind
           code: fs.readFileSync(path.resolve(process.cwd(), './test/src/test.tsx'), 'utf-8'),
         },
-        new ESRTCore(undefined, 'TEST')
+        new ESRTCore(undefined, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(`import * as React from 'react'
 const JSX = (
@@ -98,7 +98,7 @@ describe('CssTransformer', () => {
         {
           code: fs.readFileSync(path.resolve(process.cwd(), './test/src/index.css'), 'utf-8'),
         },
-        new ESRTCore(undefined, 'TEST')
+        new ESRTCore(undefined, 'TEST1')
       )
         .transformAsync()
         .then((res) => res.css)
@@ -117,7 +117,7 @@ describe('HtmlTransformer', () => {
         {
           code: `<link rel="shortcut icon" sizes="16x16" href="https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg">`,
         },
-        new ESRTCore({ injectBlockMethod: false }, 'TEST')
+        new ESRTCore({ injectBlockMethod: false }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(
       `<link rel=\"shortcut icon\" sizes=\"16x16\" href=\"data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjMwIiB2aWV3Qm94PSIwIDAgNDUgMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9Ijg0Ij48cGF0aCBmaWxsPSJyZ2IoMzYsIDQxLCA0NikiIGQ9Ik0xOC41MyAxMi4wM2gtLjAyYy4wMDkgMCAuMDE1LjAxLjAyNC4wMTFoLjAwNmwtLjAxLS4wMXptLjAwNC4wMTFjLS4wOTMuMDAxLS4zMjcuMDUtLjU3NC4wNS0uNzggMC0xLjA1LS4zNi0xLjA1LS44M1Y4LjEzaDEuNTljLjA5IDAgLjE2LS4wOC4xNi0uMTl2LTEuN2MwLS4wOS0uMDgtLjE3LS4xNi0uMTdoLTEuNTlWMy45NmMwLS4wOC0uMDUtLjEzLS4xNC0uMTNoLTIuMTZjLS4wOSAwLS4xNC4wNS0uMTQuMTN2Mi4xN3MtMS4wOS4yNy0xLjE2LjI4Yy0uMDguMDItLjEzLjA5LS4xMy4xN3YxLjM2YzAgLjExLjA4LjE5LjE3LjE5aDEuMTF2My4yOGMwIDIuNDQgMS43IDIuNjkgMi44NiAyLjY5LjUzIDAgMS4xNy0uMTcgMS4yNy0uMjIuMDYtLjAyLjA5LS4wOS4wOS0uMTZ2LTEuNWEuMTc3LjE3NyAwIDAwLS4xNDYtLjE4ek00Mi4yMyA5Ljg0YzAtMS44MS0uNzMtMi4wNS0xLjUtMS45Ny0uNi4wNC0xLjA4LjM0LTEuMDguMzR2My41MnMuNDkuMzQgMS4yMi4zNmMxLjAzLjAzIDEuMzYtLjM0IDEuMzYtMi4yNXptMi40My0uMTZjMCAzLjQzLTEuMTEgNC40MS0zLjA1IDQuNDEtMS42NCAwLTIuNTItLjgzLTIuNTItLjgzcy0uMDQuNDYtLjA5LjUyYy0uMDMuMDYtLjA4LjA4LS4xNC4wOGgtMS40OGMtLjEgMC0uMTktLjA4LS4xOS0uMTdsLjAyLTExLjExYzAtLjA5LjA4LS4xNy4xNy0uMTdoMi4xM2MuMDkgMCAuMTcuMDguMTcuMTd2My43N3MuODItLjUzIDIuMDItLjUzbC0uMDEtLjAyYzEuMiAwIDIuOTcuNDUgMi45NyAzLjg4em0tOC43Mi0zLjYxaC0yLjFjLS4xMSAwLS4xNy4wOC0uMTcuMTl2NS40NHMtLjU1LjM5LTEuMy4zOS0uOTctLjM0LS45Ny0xLjA5VjYuMjVjMC0uMDktLjA4LS4xNy0uMTctLjE3aC0yLjE0Yy0uMDkgMC0uMTcuMDgtLjE3LjE3djUuMTFjMCAyLjIgMS4yMyAyLjc1IDIuOTIgMi43NSAxLjM5IDAgMi41Mi0uNzcgMi41Mi0uNzdzLjA1LjM5LjA4LjQ1Yy4wMi4wNS4wOS4wOS4xNi4wOWgxLjM0Yy4xMSAwIC4xNy0uMDguMTctLjE3bC4wMi03LjQ3YzAtLjA5LS4wOC0uMTctLjE5LS4xN3ptLTIzLjctLjAxaC0yLjEzYy0uMDkgMC0uMTcuMDktLjE3LjJ2Ny4zNGMwIC4yLjEzLjI3LjMuMjdoMS45MmMuMiAwIC4yNS0uMDkuMjUtLjI3VjYuMjNjMC0uMDktLjA4LS4xNy0uMTctLjE3em0tMS4wNS0zLjM4Yy0uNzcgMC0xLjM4LjYxLTEuMzggMS4zOCAwIC43Ny42MSAxLjM4IDEuMzggMS4zOC43NSAwIDEuMzYtLjYxIDEuMzYtMS4zOCAwLS43Ny0uNjEtMS4zOC0xLjM2LTEuMzh6bTE2LjQ5LS4yNWgtMi4xMWMtLjA5IDAtLjE3LjA4LS4xNy4xN3Y0LjA5aC0zLjMxVjIuNmMwLS4wOS0uMDgtLjE3LS4xNy0uMTdoLTIuMTNjLS4wOSAwLS4xNy4wOC0uMTcuMTd2MTEuMTFjMCAuMDkuMDkuMTcuMTcuMTdoMi4xM2MuMDkgMCAuMTctLjA4LjE3LS4xN1Y4Ljk2aDMuMzFsLS4wMiA0Ljc1YzAgLjA5LjA4LjE3LjE3LjE3aDIuMTNjLjA5IDAgLjE3LS4wOC4xNy0uMTdWMi42YzAtLjA5LS4wOC0uMTctLjE3LS4xN3pNOC44MSA3LjM1djUuNzRjMCAuMDQtLjAxLjExLS4wNi4xMyAwIDAtMS4yNS44OS0zLjMxLjg5LTIuNDkgMC01LjQ0LS43OC01LjQ0LTUuOTJTMi41OCAxLjk5IDUuMSAyYzIuMTggMCAzLjA2LjQ5IDMuMi41OC4wNC4wNS4wNi4wOS4wNi4xNEw3Ljk0IDQuNWMwIC4wOS0uMDkuMi0uMi4xNy0uMzYtLjExLS45LS4zMy0yLjE3LS4zMy0xLjQ3IDAtMy4wNS40Mi0zLjA1IDMuNzNzMS41IDMuNyAyLjU4IDMuN2MuOTIgMCAxLjI1LS4xMSAxLjI1LS4xMXYtMi4zSDQuODhjLS4xMSAwLS4xOS0uMDgtLjE5LS4xN1Y3LjM1YzAtLjA5LjA4LS4xNy4xOS0uMTdoMy43NGMuMTEgMCAuMTkuMDguMTkuMTd6Ij48L3BhdGg+PC9zdmc+\">`
@@ -134,7 +134,7 @@ describe('HtmlTransformer', () => {
 }
 </style>`,
         },
-        new ESRTCore({ injectBlockMethod: false }, 'TEST')
+        new ESRTCore({ injectBlockMethod: false }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(`<style>
 .inline {
@@ -150,7 +150,7 @@ describe('HtmlTransformer', () => {
         {
           code: `<div class="inline" style="width: 200px; background: url(https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg)"></div>`,
         },
-        new ESRTCore({ injectBlockMethod: false }, 'TEST')
+        new ESRTCore({ injectBlockMethod: false }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(
       `<div class=\"inline\" style=\"width: 200px; background: url(data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjMwIiB2aWV3Qm94PSIwIDAgNDUgMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9Ijg0Ij48cGF0aCBmaWxsPSJyZ2IoMzYsIDQxLCA0NikiIGQ9Ik0xOC41MyAxMi4wM2gtLjAyYy4wMDkgMCAuMDE1LjAxLjAyNC4wMTFoLjAwNmwtLjAxLS4wMXptLjAwNC4wMTFjLS4wOTMuMDAxLS4zMjcuMDUtLjU3NC4wNS0uNzggMC0xLjA1LS4zNi0xLjA1LS44M1Y4LjEzaDEuNTljLjA5IDAgLjE2LS4wOC4xNi0uMTl2LTEuN2MwLS4wOS0uMDgtLjE3LS4xNi0uMTdoLTEuNTlWMy45NmMwLS4wOC0uMDUtLjEzLS4xNC0uMTNoLTIuMTZjLS4wOSAwLS4xNC4wNS0uMTQuMTN2Mi4xN3MtMS4wOS4yNy0xLjE2LjI4Yy0uMDguMDItLjEzLjA5LS4xMy4xN3YxLjM2YzAgLjExLjA4LjE5LjE3LjE5aDEuMTF2My4yOGMwIDIuNDQgMS43IDIuNjkgMi44NiAyLjY5LjUzIDAgMS4xNy0uMTcgMS4yNy0uMjIuMDYtLjAyLjA5LS4wOS4wOS0uMTZ2LTEuNWEuMTc3LjE3NyAwIDAwLS4xNDYtLjE4ek00Mi4yMyA5Ljg0YzAtMS44MS0uNzMtMi4wNS0xLjUtMS45Ny0uNi4wNC0xLjA4LjM0LTEuMDguMzR2My41MnMuNDkuMzQgMS4yMi4zNmMxLjAzLjAzIDEuMzYtLjM0IDEuMzYtMi4yNXptMi40My0uMTZjMCAzLjQzLTEuMTEgNC40MS0zLjA1IDQuNDEtMS42NCAwLTIuNTItLjgzLTIuNTItLjgzcy0uMDQuNDYtLjA5LjUyYy0uMDMuMDYtLjA4LjA4LS4xNC4wOGgtMS40OGMtLjEgMC0uMTktLjA4LS4xOS0uMTdsLjAyLTExLjExYzAtLjA5LjA4LS4xNy4xNy0uMTdoMi4xM2MuMDkgMCAuMTcuMDguMTcuMTd2My43N3MuODItLjUzIDIuMDItLjUzbC0uMDEtLjAyYzEuMiAwIDIuOTcuNDUgMi45NyAzLjg4em0tOC43Mi0zLjYxaC0yLjFjLS4xMSAwLS4xNy4wOC0uMTcuMTl2NS40NHMtLjU1LjM5LTEuMy4zOS0uOTctLjM0LS45Ny0xLjA5VjYuMjVjMC0uMDktLjA4LS4xNy0uMTctLjE3aC0yLjE0Yy0uMDkgMC0uMTcuMDgtLjE3LjE3djUuMTFjMCAyLjIgMS4yMyAyLjc1IDIuOTIgMi43NSAxLjM5IDAgMi41Mi0uNzcgMi41Mi0uNzdzLjA1LjM5LjA4LjQ1Yy4wMi4wNS4wOS4wOS4xNi4wOWgxLjM0Yy4xMSAwIC4xNy0uMDguMTctLjE3bC4wMi03LjQ3YzAtLjA5LS4wOC0uMTctLjE5LS4xN3ptLTIzLjctLjAxaC0yLjEzYy0uMDkgMC0uMTcuMDktLjE3LjJ2Ny4zNGMwIC4yLjEzLjI3LjMuMjdoMS45MmMuMiAwIC4yNS0uMDkuMjUtLjI3VjYuMjNjMC0uMDktLjA4LS4xNy0uMTctLjE3em0tMS4wNS0zLjM4Yy0uNzcgMC0xLjM4LjYxLTEuMzggMS4zOCAwIC43Ny42MSAxLjM4IDEuMzggMS4zOC43NSAwIDEuMzYtLjYxIDEuMzYtMS4zOCAwLS43Ny0uNjEtMS4zOC0xLjM2LTEuMzh6bTE2LjQ5LS4yNWgtMi4xMWMtLjA5IDAtLjE3LjA4LS4xNy4xN3Y0LjA5aC0zLjMxVjIuNmMwLS4wOS0uMDgtLjE3LS4xNy0uMTdoLTIuMTNjLS4wOSAwLS4xNy4wOC0uMTcuMTd2MTEuMTFjMCAuMDkuMDkuMTcuMTcuMTdoMi4xM2MuMDkgMCAuMTctLjA4LjE3LS4xN1Y4Ljk2aDMuMzFsLS4wMiA0Ljc1YzAgLjA5LjA4LjE3LjE3LjE3aDIuMTNjLjA5IDAgLjE3LS4wOC4xNy0uMTdWMi42YzAtLjA5LS4wOC0uMTctLjE3LS4xN3pNOC44MSA3LjM1djUuNzRjMCAuMDQtLjAxLjExLS4wNi4xMyAwIDAtMS4yNS44OS0zLjMxLjg5LTIuNDkgMC01LjQ0LS43OC01LjQ0LTUuOTJTMi41OCAxLjk5IDUuMSAyYzIuMTggMCAzLjA2LjQ5IDMuMi41OC4wNC4wNS4wNi4wOS4wNi4xNEw3Ljk0IDQuNWMwIC4wOS0uMDkuMi0uMi4xNy0uMzYtLjExLS45LS4zMy0yLjE3LS4zMy0xLjQ3IDAtMy4wNS40Mi0zLjA1IDMuNzNzMS41IDMuNyAyLjU4IDMuN2MuOTIgMCAxLjI1LS4xMSAxLjI1LS4xMXYtMi4zSDQuODhjLS4xMSAwLS4xOS0uMDgtLjE5LS4xN1Y3LjM1YzAtLjA5LjA4LS4xNy4xOS0uMTdoMy43NGMuMTEgMCAuMTkuMDguMTkuMTd6Ij48L3BhdGg+PC9zdmc+)\"></div>`
@@ -162,7 +162,7 @@ describe('HtmlTransformer', () => {
         {
           code: `<img src="https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg">`,
         },
-        new ESRTCore({ injectBlockMethod: false }, 'TEST')
+        new ESRTCore({ injectBlockMethod: false }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(
       `<img src=\"data:image/svg+xml;base64,PHN2ZyBoZWlnaHQ9IjMwIiB2aWV3Qm94PSIwIDAgNDUgMTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9Ijg0Ij48cGF0aCBmaWxsPSJyZ2IoMzYsIDQxLCA0NikiIGQ9Ik0xOC41MyAxMi4wM2gtLjAyYy4wMDkgMCAuMDE1LjAxLjAyNC4wMTFoLjAwNmwtLjAxLS4wMXptLjAwNC4wMTFjLS4wOTMuMDAxLS4zMjcuMDUtLjU3NC4wNS0uNzggMC0xLjA1LS4zNi0xLjA1LS44M1Y4LjEzaDEuNTljLjA5IDAgLjE2LS4wOC4xNi0uMTl2LTEuN2MwLS4wOS0uMDgtLjE3LS4xNi0uMTdoLTEuNTlWMy45NmMwLS4wOC0uMDUtLjEzLS4xNC0uMTNoLTIuMTZjLS4wOSAwLS4xNC4wNS0uMTQuMTN2Mi4xN3MtMS4wOS4yNy0xLjE2LjI4Yy0uMDguMDItLjEzLjA5LS4xMy4xN3YxLjM2YzAgLjExLjA4LjE5LjE3LjE5aDEuMTF2My4yOGMwIDIuNDQgMS43IDIuNjkgMi44NiAyLjY5LjUzIDAgMS4xNy0uMTcgMS4yNy0uMjIuMDYtLjAyLjA5LS4wOS4wOS0uMTZ2LTEuNWEuMTc3LjE3NyAwIDAwLS4xNDYtLjE4ek00Mi4yMyA5Ljg0YzAtMS44MS0uNzMtMi4wNS0xLjUtMS45Ny0uNi4wNC0xLjA4LjM0LTEuMDguMzR2My41MnMuNDkuMzQgMS4yMi4zNmMxLjAzLjAzIDEuMzYtLjM0IDEuMzYtMi4yNXptMi40My0uMTZjMCAzLjQzLTEuMTEgNC40MS0zLjA1IDQuNDEtMS42NCAwLTIuNTItLjgzLTIuNTItLjgzcy0uMDQuNDYtLjA5LjUyYy0uMDMuMDYtLjA4LjA4LS4xNC4wOGgtMS40OGMtLjEgMC0uMTktLjA4LS4xOS0uMTdsLjAyLTExLjExYzAtLjA5LjA4LS4xNy4xNy0uMTdoMi4xM2MuMDkgMCAuMTcuMDguMTcuMTd2My43N3MuODItLjUzIDIuMDItLjUzbC0uMDEtLjAyYzEuMiAwIDIuOTcuNDUgMi45NyAzLjg4em0tOC43Mi0zLjYxaC0yLjFjLS4xMSAwLS4xNy4wOC0uMTcuMTl2NS40NHMtLjU1LjM5LTEuMy4zOS0uOTctLjM0LS45Ny0xLjA5VjYuMjVjMC0uMDktLjA4LS4xNy0uMTctLjE3aC0yLjE0Yy0uMDkgMC0uMTcuMDgtLjE3LjE3djUuMTFjMCAyLjIgMS4yMyAyLjc1IDIuOTIgMi43NSAxLjM5IDAgMi41Mi0uNzcgMi41Mi0uNzdzLjA1LjM5LjA4LjQ1Yy4wMi4wNS4wOS4wOS4xNi4wOWgxLjM0Yy4xMSAwIC4xNy0uMDguMTctLjE3bC4wMi03LjQ3YzAtLjA5LS4wOC0uMTctLjE5LS4xN3ptLTIzLjctLjAxaC0yLjEzYy0uMDkgMC0uMTcuMDktLjE3LjJ2Ny4zNGMwIC4yLjEzLjI3LjMuMjdoMS45MmMuMiAwIC4yNS0uMDkuMjUtLjI3VjYuMjNjMC0uMDktLjA4LS4xNy0uMTctLjE3em0tMS4wNS0zLjM4Yy0uNzcgMC0xLjM4LjYxLTEuMzggMS4zOCAwIC43Ny42MSAxLjM4IDEuMzggMS4zOC43NSAwIDEuMzYtLjYxIDEuMzYtMS4zOCAwLS43Ny0uNjEtMS4zOC0xLjM2LTEuMzh6bTE2LjQ5LS4yNWgtMi4xMWMtLjA5IDAtLjE3LjA4LS4xNy4xN3Y0LjA5aC0zLjMxVjIuNmMwLS4wOS0uMDgtLjE3LS4xNy0uMTdoLTIuMTNjLS4wOSAwLS4xNy4wOC0uMTcuMTd2MTEuMTFjMCAuMDkuMDkuMTcuMTcuMTdoMi4xM2MuMDkgMCAuMTctLjA4LjE3LS4xN1Y4Ljk2aDMuMzFsLS4wMiA0Ljc1YzAgLjA5LjA4LjE3LjE3LjE3aDIuMTNjLjA5IDAgLjE3LS4wOC4xNy0uMTdWMi42YzAtLjA5LS4wOC0uMTctLjE3LS4xN3pNOC44MSA3LjM1djUuNzRjMCAuMDQtLjAxLjExLS4wNi4xMyAwIDAtMS4yNS44OS0zLjMxLjg5LTIuNDkgMC01LjQ0LS43OC01LjQ0LTUuOTJTMi41OCAxLjk5IDUuMSAyYzIuMTggMCAzLjA2LjQ5IDMuMi41OC4wNC4wNS4wNi4wOS4wNi4xNEw3Ljk0IDQuNWMwIC4wOS0uMDkuMi0uMi4xNy0uMzYtLjExLS45LS4zMy0yLjE3LS4zMy0xLjQ3IDAtMy4wNS40Mi0zLjA1IDMuNzNzMS41IDMuNyAyLjU4IDMuN2MuOTIgMCAxLjI1LS4xMSAxLjI1LS4xMXYtMi4zSDQuODhjLS4xMSAwLS4xOS0uMDgtLjE5LS4xN1Y3LjM1YzAtLjA5LjA4LS4xNy4xOS0uMTdoMy43NGMuMTEgMCAuMTkuMDguMTkuMTd6Ij48L3BhdGg+PC9zdmc+\">`
@@ -178,7 +178,7 @@ describe('HtmlTransformer', () => {
   document.body.append(img)
 </script>`,
         },
-        new ESRTCore({ injectBlockMethod: false }, 'TEST')
+        new ESRTCore({ injectBlockMethod: false }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(`<script>
   var img = document.createElement('img')
@@ -192,7 +192,7 @@ describe('HtmlTransformer', () => {
         {
           code: `<head><meta /></head>`,
         },
-        new ESRTCore({ injectBlockMethod: true }, 'TEST')
+        new ESRTCore({ injectBlockMethod: true }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(expect.stringMatching(/^\<head\>\<script\>\(\(\)\=\>/)))
 
@@ -202,7 +202,7 @@ describe('HtmlTransformer', () => {
         {
           code: `<meta />`,
         },
-        new ESRTCore({ injectBlockMethod: true }, 'TEST')
+        new ESRTCore({ injectBlockMethod: true }, 'TEST1')
       ).transformAsync()
     ).resolves.toStrictEqual(expect.stringMatching(/^\<head\>\<script\>\(\(\)\=\>/)))
 })

@@ -1,6 +1,6 @@
 const { ESRTCore } = require('index')
 
-const core = ESRTCore.getInstance()
+const core = ESRTCore.getInstance(undefined, 'TEST1')
 
 describe('ESRTCore', () => {
   test('singleton', () => {

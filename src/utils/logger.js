@@ -22,23 +22,26 @@ winston.addColors({
 })
 
 const TRANSPORTS_MAP = {
-  console: new winston.transports.Console({
-    colorize: true,
-    prettyPrint: true,
-    timestamp() {
-      return new Date().toLocaleTimeString()
-    },
-  }),
-  file: new winston.transports.File({ filename, level: 'info' }),
+  console: () =>
+    new winston.transports.Console({
+      colorize: true,
+      prettyPrint: true,
+      timestamp() {
+        return new Date().toLocaleTimeString()
+      },
+    }),
+  file: () => new winston.transports.File({ filename, level: 'info' }),
 }
 
 const getLogger = (coreInstance) => {
   const logger = winston.createLogger({
     format: winston.format.simple(),
-    transports: (coreInstance.options.loggerTransports || ['file']).map((key) => TRANSPORTS_MAP[key]),
+    transports: (coreInstance.options.loggerTransports || [])
+      .map((key) => typeof TRANSPORTS_MAP[key] === 'function' && TRANSPORTS_MAP[key]())
+      .filter((v) => v),
   })
   logger.__logDataCache = {}
-  logger.callback = () => {
+  logger.writeDataToJson = () => {
     if (!coreInstance.options.loggerDataToJson) return
     fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
       if (err) throw err
@@ -59,7 +62,6 @@ const getLogger = (coreInstance) => {
   const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, coreInstance.options.loggerCodeLength)
 
   const cacheLogData = (data) => {
-    if (!coreInstance.options.loggerDataToJson) return
     const { type, filename, parent } = data
     const key = parent || filename
     const newData = { ...data }
@@ -109,7 +111,11 @@ const getLogger = (coreInstance) => {
       arr.push(info)
     }
     const tag = `[ESRT-${type}]`
-    return f.call(logger, arr.join(`\n${tag}`))
+    return (
+      coreInstance.options.loggerTransports &&
+      coreInstance.options.loggerTransports.length &&
+      f.call(logger, arr.join(`\n${tag}`))
+    )
   }
 
   Object.keys(levels).forEach((method) => {

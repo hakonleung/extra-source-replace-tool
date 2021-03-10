@@ -101,7 +101,7 @@ const DEFAULT_OPTION_MAP = {
 
     intraHosts: ['doc.weixin.qq.com'],
   },
-  TEST: {
+  TEST1: {
     transformerIgnoreCallExprAccesses: ['tencentDocOpenUrl'],
     injectBlockMethod: true,
 
@@ -118,8 +118,21 @@ const DEFAULT_OPTION_MAP = {
     },
 
     intraHosts: ['doc.weixin.qq.com'],
-    loggerTransports: ['console'],
+    loggerTransports: null,
     transformerIgnorePathReg: /ignore3/,
+  },
+  TEST2: {
+    loggerTransports: null,
+    intraHosts: ['test.com', 'test.cn'],
+    intraPathTopLevelRules: {
+      a: '/cgi-bin/b',
+    },
+    intraPathSecondLevelRules: {
+      b: 'c',
+    },
+    injectBlockMethod: true,
+    transformerIgnoreEqualExprAccesses: ['window.ignore.ignore', 'ignore.ignoreBlock'],
+    transformerIgnoreCallExprAccesses: ['window.ignoreFunction'],
   },
 }
 
@@ -193,23 +206,26 @@ winston.addColors({
 })
 
 const TRANSPORTS_MAP = {
-  console: new winston.transports.Console({
-    colorize: true,
-    prettyPrint: true,
-    timestamp() {
-      return new Date().toLocaleTimeString()
-    },
-  }),
-  file: new winston.transports.File({ filename, level: 'info' }),
+  console: () =>
+    new winston.transports.Console({
+      colorize: true,
+      prettyPrint: true,
+      timestamp() {
+        return new Date().toLocaleTimeString()
+      },
+    }),
+  file: () => new winston.transports.File({ filename, level: 'info' }),
 }
 
 const getLogger = (coreInstance) => {
   const logger = winston.createLogger({
     format: winston.format.simple(),
-    transports: (coreInstance.options.loggerTransports || ['file']).map((key) => TRANSPORTS_MAP[key]),
+    transports: (coreInstance.options.loggerTransports || [])
+      .map((key) => typeof TRANSPORTS_MAP[key] === 'function' && TRANSPORTS_MAP[key]())
+      .filter((v) => v),
   })
   logger.__logDataCache = {}
-  logger.callback = () => {
+  logger.writeDataToJson = () => {
     if (!coreInstance.options.loggerDataToJson) return
     fs.writeFile(basename + '.json', JSON.stringify(logger.__logDataCache, null, 2), (err) => {
       if (err) throw err
@@ -230,7 +246,6 @@ const getLogger = (coreInstance) => {
   const formatCode = (code) => code.replace(/\s/g, ' ').slice(0, coreInstance.options.loggerCodeLength)
 
   const cacheLogData = (data) => {
-    if (!coreInstance.options.loggerDataToJson) return
     const { type, filename, parent } = data
     const key = parent || filename
     const newData = { ...data }
@@ -280,7 +295,11 @@ const getLogger = (coreInstance) => {
       arr.push(info)
     }
     const tag = `[ESRT-${type}]`
-    return f.call(logger, arr.join(`\n${tag}`))
+    return (
+      coreInstance.options.loggerTransports &&
+      coreInstance.options.loggerTransports.length &&
+      f.call(logger, arr.join(`\n${tag}`))
+    )
   }
 
   Object.keys(levels).forEach((method) => {
@@ -1420,7 +1439,7 @@ class HtmlWebpackESRTPlugin {
         new HtmlTransformer({ code: data.html, plugin: data.plugin }, this.core)
           .transformAsync()
           .then((html) => cb(null, { ...data, html }))
-          .then(() => this.core.logger.callback())
+          .then(() => this.core.logger.writeDataToJson())
           .catch((e) => cb(e))
       )
     })

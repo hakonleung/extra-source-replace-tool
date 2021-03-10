@@ -51,7 +51,7 @@ const DEFAULT_OPTION_MAP = {
 
     intraHosts: ['doc.weixin.qq.com'],
   },
-  TEST: {
+  TEST1: {
     transformerIgnoreCallExprAccesses: ['tencentDocOpenUrl'],
     injectBlockMethod: true,
 
@@ -68,8 +68,21 @@ const DEFAULT_OPTION_MAP = {
     },
 
     intraHosts: ['doc.weixin.qq.com'],
-    loggerTransports: ['console'],
+    loggerTransports: null,
     transformerIgnorePathReg: /ignore3/,
+  },
+  TEST2: {
+    loggerTransports: null,
+    intraHosts: ['test.com', 'test.cn'],
+    intraPathTopLevelRules: {
+      a: '/cgi-bin/b',
+    },
+    intraPathSecondLevelRules: {
+      b: 'c',
+    },
+    injectBlockMethod: true,
+    transformerIgnoreEqualExprAccesses: ['window.ignore.ignore', 'ignore.ignoreBlock'],
+    transformerIgnoreCallExprAccesses: ['window.ignoreFunction'],
   },
 }
 

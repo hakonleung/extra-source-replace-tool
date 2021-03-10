@@ -1,10 +1,10 @@
 const { getParseBase64Promise, getParseJsPromise } = require('utils/http')
 const { ESRTCore } = require('index')
-const { coreOptions, validSources, invalidSources } = require('test/helpers/mock')
+const { validSources, invalidSources } = require('test/helpers/mock')
 
 jest.setTimeout(200000)
 
-const core = new ESRTCore(coreOptions.default)
+const core = new ESRTCore(undefined, 'TEST2')
 
 describe('http', () => {
   it('getParseBase64Promise empty url', () => expect(getParseBase64Promise('', core)).resolves.toBe(undefined))

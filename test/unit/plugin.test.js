@@ -6,7 +6,7 @@ const { compile, getCompiler, getExecutedCode, readAsset } = require('test/helpe
 
 jest.setTimeout(200000)
 
-ESRTCore.getInstance().configure(null, true, 'TEST')
+ESRTCore.getInstance().configure(null, true, 'TEST1')
 
 const filename = 'basic.html'
 
@@ -19,7 +19,7 @@ describe('plugin', () => {
             template: path.resolve(__dirname, '../fixtures', filename),
             filename,
           }),
-          new HtmlPlugin(new ESRTCore({ injectBlockMethod }, 'TEST')),
+          new HtmlPlugin(new ESRTCore({ injectBlockMethod }, 'TEST1')),
         ],
       })
       const stats = await compile(compiler)

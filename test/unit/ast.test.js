@@ -8,9 +8,9 @@ const {
   printNode,
 } = require('utils/ast')
 const { ESRTCore } = require('index')
-const { coreOptions, mockAccess } = require('test/helpers/mock')
+const { mockAccess } = require('test/helpers/mock')
 
-const options = ESRTCore.genOptions(coreOptions.default)
+const options = ESRTCore.genOptions(undefined, 'TEST2')
 
 describe('ast', () => {
   test('stringPlusToTemplateExpression', () => {

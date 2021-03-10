@@ -3,7 +3,7 @@ const { compile, getCompiler, getExecutedCode, getModuleSource } = require('test
 
 jest.setTimeout(200000)
 
-ESRTCore.getInstance().configure(null, true, 'TEST')
+ESRTCore.getInstance().configure(null, true, 'TEST1')
 
 describe('loader', () => {
   ;['ts', 'tsx', 'js'].forEach((ext) => {
