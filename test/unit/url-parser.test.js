@@ -1,4 +1,4 @@
-const ESRTCore = require('core/base')
+const { ESRTCore } = require('index')
 const { testUrl, getUrlFullInfo, parseStyleUrl, execStyleUrl, transformCgi } = require('utils/url-parser')
 const { href, invalidUrls, coreOptions, validSources } = require('test/helpers/mock')
 
@@ -88,7 +88,7 @@ describe('url-parser', () => {
   })
 
   test('transformCgi', () => {
-    options = ESRTCore.genOptions({ transformCgi: (url) => 'test' + url })
+    options = ESRTCore.genOptions({ transformCgi: (url) => 'test' + url }, 'TEST')
 
     expect(transformCgi('/a/c', options)).toBe(options.transformCgi('/a/c'))
 

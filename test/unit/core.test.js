@@ -1,4 +1,4 @@
-const ESRTCore = require('core/base')
+const { ESRTCore } = require('index')
 
 const core = ESRTCore.getInstance()
 

@@ -1,5 +1,5 @@
 const { isIgnoreFile } = require('../utils/ast')
-const ESRTCore = require('../core/base')
+const ESRTCore = require('../core')
 
 module.exports = (Transformer, options = {}) => {
   return function (code, map, meta) {
@@ -7,13 +7,13 @@ module.exports = (Transformer, options = {}) => {
     if (isIgnoreFile(filename, code, map, ESRTCore.getInstance().options)) {
       return code
     }
-    if (options.nocache && typeof this.cacheable === 'function') {
-      this.cacheable(false)
-    }
+    // if (options.nocache && typeof this.cacheable === 'function') {
+    //   this.cacheable(false)
+    // }
     const transformer = new Transformer({ code, map, meta, filename, loader: this }, ESRTCore.getInstance())
-    if (options.sync) {
-      return transformer.transform()
-    }
+    // if (options.sync) {
+    //   return transformer.transform()
+    // }
     const callback = this.async()
     transformer
       .transformAsync()

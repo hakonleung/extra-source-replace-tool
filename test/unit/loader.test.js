@@ -1,9 +1,9 @@
-const ESRTCore = require('core/base')
+const { ESRTCore } = require('index')
 const { compile, getCompiler, getExecutedCode, getModuleSource } = require('test/helpers')
 
 jest.setTimeout(200000)
 
-ESRTCore.getInstance().configure(null, true)
+ESRTCore.getInstance().configure(null, true, 'TEST')
 
 describe('loader', () => {
   ;['ts', 'tsx', 'js'].forEach((ext) => {
@@ -26,5 +26,12 @@ describe('loader', () => {
     const stats = await compile(compiler)
     expect(getModuleSource('./import.css', stats)).toMatchSnapshot('module')
     expect(getExecutedCode('main.bundle.js', compiler, stats)).toMatchSnapshot('result')
+  })
+  ;[1, 2, 3].forEach((type) => {
+    it(`ignore type ${type}`, async () => {
+      const compiler = getCompiler(`./ignore${type}.ts`)
+      const stats = await compile(compiler)
+      expect(getExecutedCode('main.bundle.js', compiler, stats)).toMatchSnapshot('result')
+    })
   })
 })

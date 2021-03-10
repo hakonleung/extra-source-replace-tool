@@ -4,7 +4,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = require('../core/transformer/html')
-const ESRTCore = require('../core/base')
+const ESRTCore = require('../core')
 
 /**
  * @construtor

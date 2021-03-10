@@ -146,7 +146,7 @@ const isIgnoreFile = (filename, source, map, options) => {
   if (filename && options.transformerIgnorePathReg && options.transformerIgnorePathReg.test(filename)) return true
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
   const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
-  return leadingComment && /@local-ignore/.test(leadingComment[0])
+  return leadingComment && /@esrt-ignore/.test(leadingComment[0])
 }
 
 const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {

@@ -1,13 +1,12 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const HtmlPlugin = require('plugins/html-plugin')
 
-const ESRTCore = require('core/base')
+const { ESRTCore, HtmlPlugin } = require('index')
 const { compile, getCompiler, getExecutedCode, readAsset } = require('test/helpers')
 
 jest.setTimeout(200000)
 
-ESRTCore.getInstance().configure(null, true)
+ESRTCore.getInstance().configure(null, true, 'TEST')
 
 const filename = 'basic.html'
 
@@ -20,7 +19,7 @@ describe('plugin', () => {
             template: path.resolve(__dirname, '../fixtures', filename),
             filename,
           }),
-          new HtmlPlugin(new ESRTCore({ injectBlockMethod })),
+          new HtmlPlugin(new ESRTCore({ injectBlockMethod }, 'TEST')),
         ],
       })
       const stats = await compile(compiler)

@@ -5,6 +5,7 @@ module.exports = {
     __DEV__: false,
   },
   moduleNameMapper: {
+    '^index$': '<rootDir>/src/index',
     '^test/(.*)$': '<rootDir>/test/$1',
     '^core/(.*)$': '<rootDir>/src/core/$1',
     '^utils/(.*)$': '<rootDir>/src/utils/$1',
@@ -15,4 +16,5 @@ module.exports = {
   collectCoverageFrom: ['<rootDir>/src/**/*.js'],
   coverageReporters: ['text', 'lcov', 'clover', 'json'],
   testEnvironment: 'node',
+  coveragePathIgnorePatterns: ['/node_modules/', '<rootDir>/src/inject/*'],
 }

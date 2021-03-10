@@ -7,7 +7,7 @@ const {
   isIgnoreFile,
   printNode,
 } = require('utils/ast')
-const ESRTCore = require('core/base')
+const { ESRTCore } = require('index')
 const { coreOptions, mockAccess } = require('test/helpers/mock')
 
 const options = ESRTCore.genOptions(coreOptions.default)
@@ -93,10 +93,10 @@ describe('ast', () => {
 
     expect(isIgnoreFile('ignore/a', undefined, undefined, options)).toBeTruthy()
 
-    expect(isIgnoreFile('a', '@local-ignore', undefined, options)).toBeFalsy()
-    expect(isIgnoreFile('a', '// @local-ignore', undefined, options)).toBeTruthy()
-    expect(isIgnoreFile('a', '/* @local-ignore */', undefined, options)).toBeTruthy()
-    expect(isIgnoreFile('a', '@local-ignore', { sourcesContent: ['/* @local-ignore */'] }, options)).toBeTruthy()
+    expect(isIgnoreFile('a', '@esrt-ignore', undefined, options)).toBeFalsy()
+    expect(isIgnoreFile('a', '// @esrt-ignore', undefined, options)).toBeTruthy()
+    expect(isIgnoreFile('a', '/* @esrt-ignore */', undefined, options)).toBeTruthy()
+    expect(isIgnoreFile('a', '@esrt-ignore', { sourcesContent: ['/* @esrt-ignore */'] }, options)).toBeTruthy()
   })
 
   test('printNode', () => {

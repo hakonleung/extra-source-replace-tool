@@ -90,7 +90,7 @@ function isIgnoreNode(node, sourceFile) {
   if (ts.isEnumDeclaration(node)) return IgnoreType.Enum
   // specific comment
   const comments = sourceFile.getFullText().substr(node.getFullStart(), node.getStart(sourceFile) - node.getFullStart())
-  if (/@local-ignore/.test(comments)) return IgnoreType.IgnoreComment
+  if (/@esrt-ignore/.test(comments)) return IgnoreType.IgnoreComment
 
   return false
 }

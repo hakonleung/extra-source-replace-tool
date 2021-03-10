@@ -101,6 +101,26 @@ const DEFAULT_OPTION_MAP = {
 
     intraHosts: ['doc.weixin.qq.com'],
   },
+  TEST: {
+    transformerIgnoreCallExprAccesses: ['tencentDocOpenUrl'],
+    injectBlockMethod: true,
+
+    intraPathTopLevelRules: {
+      doc: '/cgi-bin/doc',
+      wedoc: '/cgi-bin/doc',
+      txdoc: '/cgi-bin/doc',
+      comment: '/cgi-bin/doc',
+      disk: '/cgi-bin/disk',
+      info: '/cgi-bin/disk',
+    },
+    intraPathSecondLevelRules: {
+      getinfo: 'get_info',
+    },
+
+    intraHosts: ['doc.weixin.qq.com'],
+    loggerTransports: ['console'],
+    transformerIgnorePathReg: /ignore3/,
+  },
 }
 
 class ESRTCore {
@@ -310,7 +330,7 @@ module.exports = factory(CssTransformer)
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const { isIgnoreFile } = __webpack_require__(9)
-const ESRTCore = __webpack_require__(2)
+const ESRTCore = __webpack_require__(1)
 
 module.exports = (Transformer, options = {}) => {
   return function (code, map, meta) {
@@ -318,13 +338,13 @@ module.exports = (Transformer, options = {}) => {
     if (isIgnoreFile(filename, code, map, ESRTCore.getInstance().options)) {
       return code
     }
-    if (options.nocache && typeof this.cacheable === 'function') {
-      this.cacheable(false)
-    }
+    // if (options.nocache && typeof this.cacheable === 'function') {
+    //   this.cacheable(false)
+    // }
     const transformer = new Transformer({ code, map, meta, filename, loader: this }, ESRTCore.getInstance())
-    if (options.sync) {
-      return transformer.transform()
-    }
+    // if (options.sync) {
+    //   return transformer.transform()
+    // }
     const callback = this.async()
     transformer
       .transformAsync()
@@ -486,7 +506,7 @@ const isIgnoreFile = (filename, source, map, options) => {
   if (filename && options.transformerIgnorePathReg && options.transformerIgnorePathReg.test(filename)) return true
   const realSource = map && map.sourcesContent && map.sourcesContent.length > 0 ? map.sourcesContent[0].trim() : source
   const leadingComment = /^\/\/.*|^\/\*[\s\S]+?\*\//.exec(realSource)
-  return leadingComment && /@local-ignore/.test(leadingComment[0])
+  return leadingComment && /@esrt-ignore/.test(leadingComment[0])
 }
 
 const printNode = (node, sourceFile, hint = ts.EmitHint.Unspecified) => {
@@ -1154,7 +1174,7 @@ function isIgnoreNode(node, sourceFile) {
   if (ts.isEnumDeclaration(node)) return IgnoreType.Enum
   // specific comment
   const comments = sourceFile.getFullText().substr(node.getFullStart(), node.getStart(sourceFile) - node.getFullStart())
-  if (/@local-ignore/.test(comments)) return IgnoreType.IgnoreComment
+  if (/@esrt-ignore/.test(comments)) return IgnoreType.IgnoreComment
 
   return false
 }
@@ -1383,7 +1403,7 @@ const HtmlWebpackPlugin = __webpack_require__(23)
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = __webpack_require__(24)
-const ESRTCore = __webpack_require__(2)
+const ESRTCore = __webpack_require__(1)
 
 /**
  * @construtor

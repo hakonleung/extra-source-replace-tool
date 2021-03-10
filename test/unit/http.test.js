@@ -1,5 +1,5 @@
 const { getParseBase64Promise, getParseJsPromise } = require('utils/http')
-const ESRTCore = require('core/base')
+const { ESRTCore } = require('index')
 const { coreOptions, validSources, invalidSources } = require('test/helpers/mock')
 
 jest.setTimeout(200000)

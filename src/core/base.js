@@ -51,6 +51,26 @@ const DEFAULT_OPTION_MAP = {
 
     intraHosts: ['doc.weixin.qq.com'],
   },
+  TEST: {
+    transformerIgnoreCallExprAccesses: ['tencentDocOpenUrl'],
+    injectBlockMethod: true,
+
+    intraPathTopLevelRules: {
+      doc: '/cgi-bin/doc',
+      wedoc: '/cgi-bin/doc',
+      txdoc: '/cgi-bin/doc',
+      comment: '/cgi-bin/doc',
+      disk: '/cgi-bin/disk',
+      info: '/cgi-bin/disk',
+    },
+    intraPathSecondLevelRules: {
+      getinfo: 'get_info',
+    },
+
+    intraHosts: ['doc.weixin.qq.com'],
+    loggerTransports: ['console'],
+    transformerIgnorePathReg: /ignore3/,
+  },
 }
 
 class ESRTCore {
