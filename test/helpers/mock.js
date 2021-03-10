@@ -1,11 +1,4 @@
-const protocol = 'https'
-const host = 'test.com'
-const port = '8080'
-const path = '/a/b'
-const query = '?%u4E2D%u6587'
-const hash = '#%u4E2D%u6587/%u4E2D%u6587'
-
-const href = protocol + '://' + host + ':' + port + path + query + hash
+const href = 'https://test.com:8080/a/b?%u4E2D%u6587#%u4E2D%u6587/%u4E2D%u6587'
 
 const invalidUrls = [
   'yyyy/m/d h:mm:ss;@',

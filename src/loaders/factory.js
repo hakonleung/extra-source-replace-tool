@@ -1,6 +1,5 @@
 const { isIgnoreFile } = require('../utils/ast')
-const ESRTCore = require('../core')
-const logger = require('../utils/logger')
+const ESRTCore = require('../core/base')
 
 module.exports = (Transformer, options = {}) => {
   return function (code, map, meta) {

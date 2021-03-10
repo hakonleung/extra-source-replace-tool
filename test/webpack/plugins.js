@@ -5,11 +5,11 @@ const WriteFilePlugin = require('write-file-webpack-plugin')
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer')
 const StatsPlugin = require('stats-webpack-plugin')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const { OUTPUT_PATH } = require('./constant')
+const { OUTPUT_PATH } = require('../helpers/constant')
 
 module.exports = [
   new HtmlWebpackPlugin({
-    template: path.resolve(OUTPUT_PATH, 'src/index.html')
+    template: path.resolve(OUTPUT_PATH, 'src/index.html'),
   }),
   new HtmlPlugin(),
   // new webpack.NamedModulesPlugin(),

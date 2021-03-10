@@ -1,6 +1,6 @@
 const ESRTCore = require('core/base')
 const { testUrl, getUrlFullInfo, parseStyleUrl, execStyleUrl, transformCgi } = require('utils/url-parser')
-const { href, invalidUrls, coreOptions, validSources, invalidSources } = require('test/helper')
+const { href, invalidUrls, coreOptions, validSources } = require('test/helpers/mock')
 
 let options = ESRTCore.genOptions(coreOptions.default)
 

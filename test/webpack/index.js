@@ -2,7 +2,7 @@ const webpack = require('webpack')
 const path = require('path')
 const plugins = require('./plugins')
 const modules = require('./modules')
-const { OUTPUT_PATH } = require('./constant')
+const { OUTPUT_PATH } = require('../helpers/constant')
 const ESRTCore = require('../../src/core')
 
 ESRTCore.getInstance().configure(

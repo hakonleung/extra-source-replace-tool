@@ -302,9 +302,7 @@ module.exports = require("winston");;
 const factory = __webpack_require__(8)
 const CssTransformer = __webpack_require__(11)
 
-module.exports = factory(CssTransformer, {
-  nocache: true
-})
+module.exports = factory(CssTransformer)
 
 
 /***/ }),
@@ -312,8 +310,7 @@ module.exports = factory(CssTransformer, {
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const { isIgnoreFile } = __webpack_require__(9)
-const ESRTCore = __webpack_require__(1)
-const logger = __webpack_require__(3)
+const ESRTCore = __webpack_require__(2)
 
 module.exports = (Transformer, options = {}) => {
   return function (code, map, meta) {
@@ -1386,7 +1383,7 @@ const HtmlWebpackPlugin = __webpack_require__(23)
 // you can use https://github.com/tallesl/node-safe-require instead:
 // const HtmlWebpackPlugin = require('safe-require')('html-webpack-plugin')
 const HtmlTransformer = __webpack_require__(24)
-const ESRTCore = __webpack_require__(1)
+const ESRTCore = __webpack_require__(2)
 
 /**
  * @construtor

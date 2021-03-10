@@ -8,7 +8,7 @@ const {
   printNode,
 } = require('utils/ast')
 const ESRTCore = require('core/base')
-const { coreOptions, mockAccess } = require('test/helper')
+const { coreOptions, mockAccess } = require('test/helpers/mock')
 
 const options = ESRTCore.genOptions(coreOptions.default)
 

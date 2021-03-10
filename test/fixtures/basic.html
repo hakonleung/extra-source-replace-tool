@@ -1,0 +1,24 @@
+<head>
+  <link rel="shortcut icon" sizes="16x16" href="https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg">
+  <style>
+    .inline {
+      height: 200px;
+      background: url('https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg');
+    }
+  </style>
+</head>
+
+<body>
+  <img src="https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg">
+  <div class="inline test"></div>
+  <div class="inline" style="width: 200px; background: url(https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg)"></div>
+  <div class="inline" style="width: 200px;"></div>
+
+  <script>
+    var img = document.createElement('img')
+    img.src = 'https://github.githubassets.com/images/modules/site/icons/footer/github-logo.svg'
+    document.body.append(img)
+  </script>
+
+  <!-- <script src="https://github.githubassets.com/assets/chunk-frameworks-39ff961b.js"></script> -->
+</body>
