@@ -8,7 +8,7 @@ const cssLoader = path.resolve(ROOT, './src/loaders/css-loader')
 const babelOptions = require('../.babelrc')
 const exclude = [/node_modules/]
 
-module.exports = (fixture, config = {}, plugins = []) => {
+module.exports = (fixture, config = {}) => {
   const fullConfig = {
     mode: 'development',
     devtool: config.devtool || false,
@@ -58,14 +58,13 @@ module.exports = (fixture, config = {}, plugins = []) => {
         {
           test: /\.css$/,
           exclude,
-          use: ['style-loader', 'css-loader', cssLoader, 'postcss-loader'],
+          use: ['css-loader', cssLoader],
         },
       ],
     },
     optimization: {
       minimize: false,
     },
-    plugins,
     stats: {
       all: true,
       chunks: true,
@@ -78,13 +77,13 @@ module.exports = (fixture, config = {}, plugins = []) => {
 
   const compiler = webpack(fullConfig)
 
-  // if (!config.outputFileSystem) {
-  //   const outputFileSystem = createFsFromVolume(new Volume())
+  if (!config.outputFileSystem) {
+    const outputFileSystem = createFsFromVolume(new Volume())
 
-  //   outputFileSystem.join = path.join.bind(path)
+    outputFileSystem.join = path.join.bind(path)
 
-  //   compiler.outputFileSystem = outputFileSystem
-  // }
+    compiler.outputFileSystem = outputFileSystem
+  }
 
   return compiler
 }
